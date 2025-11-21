@@ -7,8 +7,8 @@ nohup.out
 *~
 
 IDED 配置
-**/.idea
-**/.vscode
+.idea
+.vscode
 
 # 操作系统相关
 # 忽略所有目录下的 .DS_Store 及其变体
