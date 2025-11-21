@@ -1,0 +1,25 @@
+# 忽略根目录下可能产生的日志文件
+*.log
+nohup.out
+
+# 忽略根目录下的临时文件
+*.tmp
+*~
+
+# 忽略操作系统在根目录产生的文件
+.DS_Store
+Thumbs.db
+
+IDED 配置
+.idea
+.vscode
+
+# 操作系统相关
+# 忽略所有目录下的 .DS_Store 及其变体
+**/.DS_Store
+**/.DS_Store?
+
+# 忽略所有目录下的 Thumbs.db 及其变体
+**/Thumbs.db
+**/Thumbs.db?
+
