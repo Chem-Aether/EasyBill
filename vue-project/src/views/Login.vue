@@ -52,7 +52,7 @@
       </div>
     </div>
 </template>
-  
+
 <script setup>
   import { ref, onMounted } from 'vue';
   import { User, Lock, Key } from '@element-plus/icons-vue';
@@ -173,7 +173,7 @@
     console.log('注册');
   };
 </script>
-  
+
 <style scoped>
 .login-container {
   display: flex;

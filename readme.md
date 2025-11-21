@@ -1,5 +1,29 @@
 # 设计文档
 
+## 项目初始化
+
+### 前端初始化
+
+```sh
+npm install
+```
+
+### Compile and Hot-Reload for Development
+
+```sh
+npm run dev
+```
+
+### Compile and Minify for Production
+
+```sh
+npm run build
+```
+
+### 后端初始化
+
+
+
 ## 登录页面
 ## /Login
 默认访问进入Login页面
@@ -35,20 +59,3 @@ If you manually switch to a different parent and actually want the inheritance, 
 
 
 
-## Project Setup
-
-```sh
-npm install
-```
-
-### Compile and Hot-Reload for Development
-
-```sh
-npm run dev
-```
-
-### Compile and Minify for Production
-
-```sh
-npm run build
-```
