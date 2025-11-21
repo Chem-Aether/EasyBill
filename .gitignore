@@ -6,13 +6,9 @@ nohup.out
 *.tmp
 *~
 
-# 忽略操作系统在根目录产生的文件
-.DS_Store
-Thumbs.db
-
 IDED 配置
-.idea
-.vscode
+**/.idea
+**/.vscode
 
 # 操作系统相关
 # 忽略所有目录下的 .DS_Store 及其变体
