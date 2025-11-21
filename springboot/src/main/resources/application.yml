@@ -1,0 +1,48 @@
+server:
+        port: 8081
+spring:
+        application:
+                name: springboot
+        # 输出配置
+        output:
+                ansi:
+                        enabled: ALWAYS
+        banner:
+                charset: UTF-8
+                location: classpath:banner.txt
+        main:
+                banner-mode: console
+        # 数据库配置
+        datasource:
+                driver-class-name: com.mysql.cj.jdbc.Driver
+                url: jdbc:mysql://localhost:3306/springboot?useSSL=false&serverTimezone=UTC
+                username: root
+                password: 123456
+        # redis配置
+        redis:
+                host: localhost  # Redis服务器地址
+                port: 6379       # Redis服务器端口
+                password:         # Redis密码（如果没有密码，可以留空）
+                database: 0      # Redis数据库索引（默认是0）
+                timeout: 2000    # 连接超时时间（单位：毫秒）
+                lettuce:
+                        pool:
+                                max-active: 8      # 连接池最大连接数
+                                max-idle: 8        # 连接池最大空闲连接数
+                                min-idle: 0        # 连接池最小空闲连接数
+                                max-wait: -1ms     # 连接池最大阻塞等待时间（-1表示无限制）
+jwt:
+  # 密钥
+  # 过期时间，单位：秒
+
+springdoc:
+        api-docs:
+                enabled: true                  # 启用/禁用API文档的访问
+                path: /v3/api-docs            # 设置API文档的访问路径
+        swagger-ui:
+                path: /swagger-ui.html        # 设置Swagger UI的访问路径
+                disable-swagger-default-url: true
+                display-request-duration: true # 显示请求持续时间
+        packages-to-scan: com.easybill # 指定要扫描的包
+
+
