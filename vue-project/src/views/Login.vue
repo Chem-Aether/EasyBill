@@ -180,7 +180,7 @@
   justify-content: flex-end;
   align-items: center;
   height: 100vh;
-  background-image: url('../../public/background.png');
+  background-image: url('/background.png');
   background-size: cover;
   background-position: center;
 }

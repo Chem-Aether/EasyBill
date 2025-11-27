@@ -22,7 +22,9 @@ npm run build
 
 ### 后端初始化
 
-
+```sh
+redis-server
+```
 
 ## 登录页面
 ## /Login

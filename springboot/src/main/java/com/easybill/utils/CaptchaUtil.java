@@ -3,6 +3,7 @@ import javax.imageio.ImageIO;
 import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.Random;
 
@@ -72,4 +73,20 @@ public class CaptchaUtil {
         }
     }
 
+    public static void main(String[] args) {
+        System.out.println("--- 开始生成验证码 ---");
+
+        Captcha captcha = CaptchaUtil.generateCaptcha();
+        System.out.println("生成的验证码文本是: " + captcha.getText());
+
+        String filename = "captcha_test_" + System.currentTimeMillis() + ".jpg";
+        try (FileOutputStream fos = new FileOutputStream(filename)) {
+            fos.write(captcha.getImageBytes());
+            System.out.println("验证码图片已成功保存到: " + System.getProperty("user.dir") + "/" + filename);
+        } catch (IOException e) {
+            System.err.println("保存验证码图片失败!");
+            e.printStackTrace();
+        }
+        System.out.println("--- 验证码生成完毕 ---");
+    }
 }
