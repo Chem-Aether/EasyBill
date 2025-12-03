@@ -432,12 +432,6 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-.root {
-  width: 100%;
-  height: 100%;
-  padding: 10px;
-  box-sizing: border-box;
-}
 
 .icon {
   width: 40px;

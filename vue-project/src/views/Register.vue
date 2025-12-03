@@ -39,7 +39,7 @@
         </el-link>
       </div>
     </div>
-  </template>
+</template>
   
 <script setup>
   import { ref } from 'vue';
@@ -67,7 +67,7 @@
   };
 </script>
   
-  <style scoped>
+<style scoped>
   .register-container {
     max-width: 400px;
     margin: 0 auto;
@@ -107,4 +107,4 @@
   .login-link .el-link:hover {
     color: #ff4757;
   }
-  </style>
+</style>
