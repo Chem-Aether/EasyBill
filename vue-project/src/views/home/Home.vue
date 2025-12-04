@@ -1,18 +1,18 @@
 <template>
   <div class="root">
     <el-row :gutter="10" style="margin-bottom: 10px;">
-      <el-col :span="10">
-        <div class="box" style="display: flex">
-          <div class="text" style="width: 40%">
-            <div class="DataText">2025年八月</div>
-            <div class="TotalMoney">¥ 5,500</div>
-            <div style="color: #999999">总收入：2000</div>
+      <el-col :span="13">
+        <div class="box" style="display: flex;justify-content: space-between">
+          <div class="text" >
+            <div class="DataText">{{NowMonth}}</div>
+            <div class="TotalMoney">¥ {{ expenseItem }}</div>
+            <div style="color: #999999">总收入：{{ incomeItem }}</div>
             <div><el-button color="#626aef" :dark="isDark">查看详情</el-button></div>
           </div>
           <div class="month-total-pie" ref="MonthPieDom"></div>
         </div>
       </el-col>
-      <el-col :span="14">
+      <el-col :span="11">
         <div class="box">
           <div style="display: flex; justify-content: space-between; align-items: center;margin-right: 60px">
             <span >资产概要</span>
@@ -76,6 +76,51 @@
 import { ref,onMounted, onUnmounted} from 'vue';
 import * as echarts from 'echarts'
 
+// 格式化时间
+const formatYearMonth = (date = new Date()) => {
+  const year = date.getFullYear();
+  const monthNames = ['一月', '二月', '三月', '四月', '五月', '六月', '七月', '八月', '九月', '十月', '十一月', '十二月'];
+  const month = monthNames[date.getMonth()];
+  return `${year}年${month}`;
+};
+
+const NowMonth = ref(formatYearMonth());
+console.log(NowMonth.value);
+
+// 本月消费汇总
+const Total  = ref(0);
+Total.value = [
+  { value: 1048, name: '收入' },
+  { value: 999.08, name: '支出' },
+  { value: 0, name: '互转' },
+]
+
+// 千分位转换
+const formatThousands = (num) => {
+  // 处理空值、非数字，兜底返回 "0"
+  if (!num || isNaN(Number(num))) return "0";
+
+  // 转为数字并拆分为整数和小数部分
+  const [integerPart, decimalPart] = Number(num).toString().split(".");
+
+  // 整数部分添加千分位逗号（核心正则）
+  const formattedInteger = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+
+  // 有小数部分则拼接，无则返回整数部分
+  return decimalPart ? `${formattedInteger}.${decimalPart}` : formattedInteger;
+};
+
+
+const expenseItem = ref(
+    formatThousands(Total.value.find(item => item.name === '支出').value)
+);
+
+const incomeItem = ref(
+    formatThousands(2619.98)
+);
+
+
+// 资产
 const accountList = ref(null)
 accountList.value = [
   {'type':'总资产',"value":"12,309"},
@@ -475,7 +520,7 @@ onUnmounted(() => {
 
 .month-total-pie {
   height: 100%;
-  width: 60%;
+  width: 40%;
 }
 
 .accounts {
@@ -486,9 +531,9 @@ onUnmounted(() => {
 }
 
 .one-account  {
-  width: 30%;
+  width: 32%;
   height: 50%;
-  margin: 8px 4px auto;
+  margin: 8px 3px auto;
   border-radius: 5px;
   background-color: #eff0fd;
 
