@@ -1,74 +1,65 @@
 package com.easybill.service;
 
 import com.easybill.utils.CaptchaUtil;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
-
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 @Service
+@RequiredArgsConstructor
 public class CaptchaService {
 
-    @Autowired
-    private StringRedisTemplate redisTemplate;
+    // 常量提取
+    private static final long CAPTCHA_EXPIRE_MINUTES = 5;
+
+    // 构造器注入
+    private final StringRedisTemplate redisTemplate;
 
     /**
-     * 生成验证码，并将验证码文本存入 Redis
-     *
-     * @return CaptchaUtil.Captcha 包含验证码文本和图片字节数组
+     * 生成验证码，存入 Redis，返回验证码图片 + key
      */
     public CaptchaWithKey generateCaptcha() {
         CaptchaUtil.Captcha captcha = CaptchaUtil.generateCaptcha();
-
-        // 生成一个唯一的 key（例如 UUID）
         String captchaKey = UUID.randomUUID().toString();
 
-        // 将验证码文本存入 Redis，设置过期时间为 5 分钟
-        redisTemplate.opsForValue().set(captchaKey, captcha.getText(), 5, TimeUnit.MINUTES);
+        // 存入 Redis 5分钟过期
+        redisTemplate.opsForValue()
+                .set(captchaKey, captcha.getText(), CAPTCHA_EXPIRE_MINUTES, TimeUnit.MINUTES);
 
-        // 返回验证码对象和 key
         return new CaptchaWithKey(captcha, captchaKey);
     }
 
     /**
-     * 校验用户输入的验证码
-     *
-     * @param userCaptcha 用户输入的验证码
-     * @param captchaKey  Redis 中存储验证码的 key
-     * @return 校验结果
+     * 校验验证码
      */
-    public boolean validateCaptcha(String userCaptcha, String captchaKey) {
-        // 从 Redis 中获取验证码文本
-        String captcha = redisTemplate.opsForValue().get(captchaKey);
-
-        if (captcha != null && captcha.equalsIgnoreCase(userCaptcha)) {
-            // 验证码正确，删除 Redis 中的验证码
-            redisTemplate.delete(captchaKey);
-            return true;
+    public boolean validateCaptcha(String userInputCode, String captchaKey) {
+        if (userInputCode == null || captchaKey == null) {
+            return false;
         }
-        return false;
+
+        String correctCode = redisTemplate.opsForValue().get(captchaKey);
+        if (correctCode == null) {
+            return false;
+        }
+
+        // 验证成功 → 删除验证码，防止重复使用
+        boolean isValid = correctCode.equalsIgnoreCase(userInputCode);
+        if (isValid) {
+            redisTemplate.delete(captchaKey);
+        }
+
+        return isValid;
     }
 
     /**
-     * 封装验证码和 key 的对象
+     * 验证码返回对象（标准静态内部类 + Lombok 简化）
      */
+    @lombok.Data
+    @lombok.AllArgsConstructor
     public static class CaptchaWithKey {
-        private final CaptchaUtil.Captcha captcha;
-        private final String captchaKey;
-
-        public CaptchaWithKey(CaptchaUtil.Captcha captcha, String captchaKey) {
-            this.captcha = captcha;
-            this.captchaKey = captchaKey;
-        }
-
-        public CaptchaUtil.Captcha getCaptcha() {
-            return captcha;
-        }
-
-        public String getCaptchaKey() {
-            return captchaKey;
-        }
+        private CaptchaUtil.Captcha captcha;
+        private String captchaKey;
     }
 }

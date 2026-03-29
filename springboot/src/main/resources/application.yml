@@ -15,7 +15,7 @@ spring:
         # 数据库配置
         datasource:
                 driver-class-name: com.mysql.cj.jdbc.Driver
-                url: jdbc:mysql://localhost:3306/springboot?useSSL=false&serverTimezone=UTC
+                url: jdbc:mysql://localhost:3306/springdatabase?useSSL=false&serverTimezone=UTC
                 username: root
                 password: 123456
         # redis配置
@@ -33,7 +33,9 @@ spring:
                                 max-wait: -1ms     # 连接池最大阻塞等待时间（-1表示无限制）
 jwt:
   # 密钥
+  secret: easybill_2026_secret_key_abcdefg
   # 过期时间，单位：秒
+  expire: 86400
 
 springdoc:
         api-docs:

@@ -89,78 +89,62 @@
       const imageUrl = URL.createObjectURL(new Blob([response.data]));
       captchaImage.value = imageUrl; // 更新验证码图片
       captchaKey.value = response.headers['captcha-key']
-      // console.log(captchaKey.value)
+      console.log(captchaKey.value)
     } catch (error) {
       console.error('加载验证码失败', error);
     }
   };
 
-  
+
   // 处理登录
   const handleLogin = async () => {
     const { username, password, captcha } = loginForm.value;
 
-      // 表单验证
-      if (!username) {
-        ElMessage.warning('账号不能为空');
-        return;
-      }
-      if (!password) {
-        ElMessage.warning('密码不能为空');
-        return;
-      }
-      if (!captcha) {
-        ElMessage.warning('验证码不能为空');
-        return;
-      }
+    // 表单验证
+    if (!username) {
+      ElMessage.warning('账号不能为空');
+      return;
+    }
+    if (!password) {
+      ElMessage.warning('密码不能为空');
+      return;
+    }
+    if (!captcha) {
+      ElMessage.warning('验证码不能为空');
+      return;
+    }
 
-      try {
-        // 发起验证码请求
-        const res = await validate(captcha, captchaKey.value);
-        // 根据返回数据弹出提示
-        if (res.data.code === '200') {
-          // console.log(res.data.code, "succe");
-        }
-        else {
-          console.log(res.data.code)
-          ElMessage.error('验证码错误！');
 
-          loadCaptcha();
-          loginForm.value.captcha = '';
-          
-          return;
-        }
-      } catch (error) {
-        ElMessage.error('验证码错误，请稍后重试');
-        loadCaptcha();
-        return;
-      }
+    try {
+      // 这里如果验证码错误，会直接抛出异常进入 catch
+      await validate(captcha, captchaKey.value);
+      // 能走到这里 = 验证码正确
+    } catch (error) {
+      // 后端返回 400 会进入这里
+      ElMessage.error(error.response?.data?.msg || '验证码错误！');
+      loadCaptcha();
+      loginForm.value.captcha = '';
+      return;
+    }
 
-      const loginData = {
-        user_id: loginForm.value.username,
-        password: loginForm.value.password,
-      };
 
-      try {
-        // 发起登录请求
-        const res = await login(loginData);
+    const loginData = {
+      account: username,
+      password: password,
+    };
 
-        // 根据返回数据弹出提示
-        if (res.data.code === '200') {
-          ElMessage.success('登录成功');
-          const token = res.headers.token; // 假设后端返回的 JWT 在 token 字段中
-          // console.log(token);
-          localStorage.setItem('token', token); // 存储 JWT
-          router.push({ path: '/home' });
-        } else {
-          ElMessage.error(res.data.msg || '登录失败');
-          loadCaptcha();
-        }
-      } catch (error) {
-        ElMessage.error('登录失败，请稍后重试');
-        loadCaptcha();
-      }
+    try {
+      const res = await login(loginData);
+      ElMessage.success(res.data.msg || '登录成功');
+      const token = res.headers.token;
+      localStorage.setItem('token', token);
+      router.push('/home');
 
+    } catch (error) {
+      ElMessage.error(error.response?.data?.msg || '登录失败，请稍后重试');
+      loadCaptcha();
+      loginForm.value.captcha = '';
+    }
   };
   
   // 忘记密码

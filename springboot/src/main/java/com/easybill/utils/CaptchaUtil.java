@@ -3,13 +3,14 @@ import javax.imageio.ImageIO;
 import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.Random;
 
+import lombok.AllArgsConstructor;
+import lombok.Getter;
 
 public class CaptchaUtil {
-    //    配置验证码图片
+    //  配置验证码图片
     private static final int WIDTH = 100;
     private static final int HEIGHT = 40;
     private static final int FONT_SIZE = 30;
@@ -55,38 +56,11 @@ public class CaptchaUtil {
         return new Captcha(captchaText.toString(), baos.toByteArray());
     }
 
+    @Getter
+    @AllArgsConstructor
     public static class Captcha {
         private final String text;
         private final byte[] imageBytes;
-
-        public Captcha(String text, byte[] imageBytes) {
-            this.text = text;
-            this.imageBytes = imageBytes;
-        }
-
-        public String getText() {
-            return text;
-        }
-
-        public byte[] getImageBytes() {
-            return imageBytes;
-        }
     }
 
-    public static void main(String[] args) {
-        System.out.println("--- 开始生成验证码 ---");
-
-        Captcha captcha = CaptchaUtil.generateCaptcha();
-        System.out.println("生成的验证码文本是: " + captcha.getText());
-
-        String filename = "captcha_test_" + System.currentTimeMillis() + ".jpg";
-        try (FileOutputStream fos = new FileOutputStream(filename)) {
-            fos.write(captcha.getImageBytes());
-            System.out.println("验证码图片已成功保存到: " + System.getProperty("user.dir") + "/" + filename);
-        } catch (IOException e) {
-            System.err.println("保存验证码图片失败!");
-            e.printStackTrace();
-        }
-        System.out.println("--- 验证码生成完毕 ---");
-    }
 }
