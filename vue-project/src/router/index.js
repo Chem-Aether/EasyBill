@@ -31,6 +31,10 @@ const routes = [
       {path: '/help', component: () => import("@/views/Help.vue"), },
     ]
   },
+    {
+        path: '/travel',
+        component: () => import("@/views/travel/main.vue"),
+    },
 
   {
     path: '/exit', 
