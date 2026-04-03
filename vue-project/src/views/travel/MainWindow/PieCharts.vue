@@ -13,36 +13,52 @@
 </template>
   
 <script setup>
-import {onMounted, ref, watch,nextTick} from 'vue'
+import SmallTittle from '@/views/travel/MainWindow/SmallTittle.vue';
+import {onMounted, ref} from 'vue'
 import * as echarts from 'echarts';
 
-//导入pinia数据
-import { storeToRefs  } from 'pinia'
-import { usePanelConfigStore, usePanelDataSourceStore} from '@/store'
-//导入面板配置项
-const ConfigStore = usePanelConfigStore()
-//导入面板类型  PanelType
-const { PanelType} = storeToRefs(ConfigStore)
-//导入组件数据
-const DataSourceStore = usePanelDataSourceStore()
-//面板统计 PanelDataSource
-const {PanelDataSource,TicketDataSource } = storeToRefs(DataSourceStore)
 
-
-// import { getTicketData, getStatisticsData} from '@/aips';
-
-
-
-watch(PanelType,() => {
-  Promise.all([getStatisticsData(PanelType.value), getTicketData(PanelType.value)]).then(
-    ([a,b]) => {
-      PanelDataSource.value = a;
-      console.log(a);
-      PieChart.setOption(CreatePieOption(a.panel2.data,IsPie.value),true);
-      TicketDataSource.value = b;
-    }
-  )
-})
+const PanelDataSource = ref()
+PanelDataSource.value = {
+  "panel1":{
+      "tittle":"铁路",
+      "data":{
+          "里程":"4090",
+          "时长":"7:51",
+          "车次":"3",
+          "站点":"4"
+      }
+  },
+  "panel2":{
+    "tittle":"铁路",
+    "data":[
+      {
+        "name":"普快",
+        "num":"3"
+      },
+      {
+        "name":"动车",
+        "num":"2"
+      },
+      {
+        "name":"高速动车",
+        "num":"3"
+      },
+      {
+        "name":"直达特快",
+        "num":"4"
+      },
+      {
+        "name":"特快列车",
+        "num":"5"
+      },
+      {
+        "name":"城际列车",
+        "num":"6"
+      }
+    ]
+  }
+}
 
 //取DOM元素
 const Pie = ref();
@@ -197,18 +213,13 @@ var IsPie = ref(false);
 var PieChart = null;
 onMounted(() => {
   //获取航空铁路统计数据
-  getStatisticsData().then(
-    (res) => {
-      PanelDataSource.value = res
-      console.log(PanelDataSource.value )
-      nextTick(() => {
-        console.log('DOM 已更新');
-        PieChart = echarts.init(Pie.value);
-        PieChart.setOption(CreatePieOption(PanelDataSource.value.panel2.data,IsPie.value),true); 
-      }); 
-    }
-  )
-})  
+  console.log(PanelDataSource.value )
+    console.log('DOM 已更新');
+    PieChart = echarts.init(Pie.value);
+    PieChart.setOption(CreatePieOption(PanelDataSource.value.panel2.data,IsPie.value),true); 
+  }
+)
+
 //按钮切换事件
 function ChangeChart(){
   IsPie.value=!IsPie.value;

@@ -16,6 +16,7 @@
 <script setup>
 import Ticket from './Ticket.vue'
 import Model from './Model.vue'
+import SmallTittle from '@/views/travel/MainWindow/SmallTittle.vue';
 import {onMounted, ref } from 'vue'
 
 // 模拟滚动条

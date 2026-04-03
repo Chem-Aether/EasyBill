@@ -12,20 +12,22 @@
 <script setup>
 import { ref } from 'vue'
 
-import { storeToRefs  } from 'pinia'
-import { usePanelDataSourceStore} from '@/store'
-//导入组件数据
-const DataSourceStore = usePanelDataSourceStore()
-//标题总统计数据  Total
-const {Total} = storeToRefs(DataSourceStore)
+// import { storeToRefs  } from 'pinia'
+// import { usePanelDataSourceStore} from '@/store'
+// //导入组件数据
+// const DataSourceStore = usePanelDataSourceStore()
+// //标题总统计数据  Total
+// const {Total} = storeToRefs(DataSourceStore)
 
 //初始化标题总统计数据
 // import {getTotalData} from '@/aips'
-getTotalData().then(
-  (res) => {
-    Total.value = res;
-  }
-)
+const Total = ref();
+Total.value = {
+    "province":5,
+    "city":24,
+    "area":75
+}
+
 </script>
 
 <style scoped>

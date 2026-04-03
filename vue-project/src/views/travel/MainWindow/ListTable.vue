@@ -26,36 +26,74 @@
 </template>
 
 <script setup>
+import SmallTittle from '@/views/travel/MainWindow/SmallTittle.vue';
 import { ref ,onMounted} from 'vue'
 
-//导入pinia数据
-import { storeToRefs  } from 'pinia'
-import { usePanelDataSourceStore} from '@/store'
-const DataSourceStore = usePanelDataSourceStore()
-//景点数据 ScenicSpotSource
-const {ScenicSpotSource } = storeToRefs(DataSourceStore)
 
-//网络请求
-// import {getScenicSpotData} from '@/aips';
-//请求景点信息
-// getScenicSpotData().then(
-//   (res) => {
-//     ScenicSpotSource.value = res
-//   }
-// )
+
+const ScenicSpotSource = ref()
+ScenicSpotSource.value = [
+    {
+      "name":"陕西历史博物馆",
+      "Adder":"陕西省/西安市/临潼区",
+      "Rank":"1"
+    },
+    {
+      "name":"兵马俑博物馆",
+      "Adder":"陕西省/西安市/临潼区",
+      "Rank":"2"
+    },
+    {
+      "name":"西安城墙",
+      "Adder":"陕西省/西安市/临潼区",
+      "Rank":"0"
+    },
+    {
+      "name":"碑林博物院",
+      "Adder":"陕西省/西安市/临潼区",
+      "Rank":"1"
+    },
+    {
+      "name":"西北大学太白校区",
+      "Adder":"陕西省/西安市/临潼区",
+      "Rank":"1"
+    },
+    {
+      "name":"小寨商业街",
+      "Adder":"陕西省/西安市/临潼区",
+      "Rank":"2"
+    },
+    {
+      "name":"大雁塔",
+      "Adder":"陕西省/西安市/临潼区",
+      "Rank":"0"
+    },
+    {
+      "name":"法门寺",
+      "Adder":"陕西省/西安市/临潼区",
+      "Rank":"1"
+    },
+    {
+      "name":"欢乐谷",
+      "Adder":"陕西省/西安市/临潼区",
+      "Rank":"2"
+    },
+    {
+      "name":"钟楼",
+      "Adder":"陕西省/西安市/临潼区",
+      "Rank":"red"
+    }
+  
+  ]
+
+
 
 //获取DOM
 const AutoScroll = ref()
 //定时器
 let Timer = null;
 onMounted(()=>{
-  //请求景点信息
-getScenicSpotData().then(
-  (res) => {
-    ScenicSpotSource.value = res;
-    Timer = setInterval(scroll,10);  
-  }
-)
+
   
 })
 

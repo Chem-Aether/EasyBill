@@ -25,22 +25,65 @@
 <script setup>
 import { ref , nextTick} from 'vue'
 
-//导入pinia数据
-import { storeToRefs  } from 'pinia'
-import { usePanelDataSourceStore} from '@/store'
-//导入组件数据
-const DataSourceStore = usePanelDataSourceStore()
-//城市探索柱状图数据 CityPercentSource
-const {TicketDataSource } = storeToRefs(DataSourceStore)
 
-import { getTicketData } from '@/aips';
-//请求车票机票信息
-getTicketData().then(
-  (res)=>{
-    TicketDataSource.value = res;
-  }
-)
-
+const TicketDataSource = ref();
+TicketDataSource.value = [
+    {
+        "Number": "MU2320",
+        "From": "ZGSZ",
+        "To": "ZLXY",
+        "time": "2h23min",
+        "more": {
+            "起点": "深圳宝安",
+            "终点": "西安咸阳",
+            "起飞时间": "2023/8/8 9:56",
+            "降落时间": "2023/8/8 19:56",
+            "注册号": "B6616",
+            "机型": "A320-300",
+            "里程/km": "1104",
+            "经停": "吉安井冈山"
+        }
+    },
+    {
+        "Number": "G824",
+        "From": "西安北",
+        "To": "广州南",
+        "time": "10h23min",
+        "more": {
+            "发车时间": "2023/8/8 9:56",
+            "到达时间": "2023/8/8 19:56",
+            "铁路类型": "高速动车",
+            "车型": "CRH380AL",
+            "里程/km": "1104"
+        }
+    },
+    {
+        "Number": "G6215",
+        "From": "广州南",
+        "To": "深圳北",
+        "time": "1h",
+        "more": {
+            "发车时间": "2023/8/11 9:56",
+            "到达时间": "2023/8/1 19:56",
+            "铁路类型": "高速动车",
+            "车型": "CR400AF",
+            "里程/km": "404"
+        }
+    },
+    {
+        "Number": "D2696",
+        "From": "咸阳西",
+        "To": "西安北",
+        "time": "13min",
+        "more": {
+            "发车时间": "2023/10/3 9:56",
+            "到达时间": "2023/10/3 19:56",
+            "铁路类型": "动车",
+            "车型": "CRH5G",
+            "里程/km": "20"
+        }
+    }
+]
 
 //随机颜色盘
 const color=ref([

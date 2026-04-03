@@ -11,7 +11,7 @@
 
 <style scoped>
   .headr{
-    background-image: url('../assets/img/Comp 1.gif');
+    background-image: url('@/assets/img/Comp 1.gif');
     background-repeat:no-repeat;
     background-size:100%;
 

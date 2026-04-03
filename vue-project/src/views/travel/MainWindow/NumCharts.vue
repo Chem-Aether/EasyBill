@@ -10,18 +10,52 @@
     </div>
   </Border></div>
 </template>
-  
+
 <script setup>
+import SmallTittle from '@/views/travel/MainWindow/SmallTittle.vue';
 import { ref} from 'vue';
 
-//导入pinia数据
-import { storeToRefs  } from 'pinia'
-import { usePanelDataSourceStore} from '@/store'
-//导入组件数据
-const DataSourceStore = usePanelDataSourceStore()
-//面板统计 PanelDataSource
-const {PanelDataSource } = storeToRefs(DataSourceStore)
-
+const PanelDataSource = ref()
+PanelDataSource.value = {
+  "panel1":{
+      "tittle":"铁路",
+      "data":{
+          "里程":"4090",
+          "时长":"7:51",
+          "车次":"3",
+          "站点":"4"
+      }
+  },
+  "panel2":{
+    "tittle":"铁路",
+    "data":[
+      {
+        "name":"普快",
+        "num":"3"
+      },
+      {
+        "name":"动车",
+        "num":"2"
+      },
+      {
+        "name":"高速动车",
+        "num":"3"
+      },
+      {
+        "name":"直达特快",
+        "num":"4"
+      },
+      {
+        "name":"特快列车",
+        "num":"5"
+      },
+      {
+        "name":"城际列车",
+        "num":"6"
+      }
+    ]
+  }
+}
 </script>
   
 <style scoped>

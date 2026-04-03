@@ -9,11 +9,11 @@ const routes = [
   },
   {
     path: '/login', // 登录页面路径
-    component: () => import("@/views/Login.vue"), 
+    component: () => import("@/views/system/Login.vue"), 
   },
   {
     path: '/register',
-    component: () => import("@/views/Register.vue"),
+    component: () => import("@/views/system/Register.vue"),
   },
   {
     path: '/home', // 主页路径
@@ -23,12 +23,8 @@ const routes = [
       {path: 'group', component: () => import("@/views/home/MyGroup.vue"),},
       {path: 'Add', component: () => import("@/views/home/AddRecord.vue"),},
       {path: 'classify', component: () => import("@/views/home/Classify.vue"),},
-      {path: 'taskstatistics', component: () => import("@/views/home/TaskRelease.vue"),},
-      {path: 'taskrelease', component: () => import("@/views/home/TaskRelease.vue"),},
       {path: 'query', component: () => import("@/views/home/QueryTable.vue"),},
-      {path: 'learncenter', component: () => import("@/views/home/LearnCenter.vue"),},
-      {path: 'message', component: () => import("@/views/home/Message.vue"),},
-      {path: '/help', component: () => import("@/views/Help.vue"), },
+      {path: '/help', component: () => import("@/views/system/Help.vue"), },
     ]
   },
     {
