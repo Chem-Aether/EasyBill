@@ -59,8 +59,7 @@
   import { useRouter } from 'vue-router'; // 引入 useRouter
 
   // API接口
-  import { login } from '@/api/login';
-  import { captcha, validate } from '@/api/captcha';
+  import { captcha, validate, login } from '@/api/auth';
 
   onMounted(() => {
       loadCaptcha();

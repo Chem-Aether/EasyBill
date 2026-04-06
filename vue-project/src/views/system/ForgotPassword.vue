@@ -62,8 +62,7 @@
 import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
-import { captcha } from '@/api/captcha';
-import { forgotPassword } from '@/api/user';
+import { captcha, forgotPassword } from '@/api/auth';
 
 const router = useRouter();
 const forgotForm = ref({

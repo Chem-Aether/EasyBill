@@ -35,7 +35,7 @@ public class UserService {
 
         return user;
     }
-
+    // 注册
     public User register(User user) {
         if (user == null) {
             throw new RuntimeException("请求数据不能为空");
@@ -59,7 +59,7 @@ public class UserService {
         userMapper.insert(user);
         return user;
     }
-
+    // 修改密码
     public void resetPassword(String account, String newPassword) {
         if (account == null || account.isBlank()) {
             throw new RuntimeException("账号不能为空");
