@@ -39,12 +39,13 @@ jwt:
 
 springdoc:
         api-docs:
-                enabled: true                  # 启用/禁用API文档的访问
-                path: /v3/api-docs            # 设置API文档的访问路径
+                enabled: true
+                path: /v3/api-docs
         swagger-ui:
-                path: /swagger-ui.html        # 设置Swagger UI的访问路径
+                path: /swagger-ui/index.html
                 disable-swagger-default-url: true
-                display-request-duration: true # 显示请求持续时间
-        packages-to-scan: com.easybill # 指定要扫描的包
+                url: /v3/api-docs
+                display-request-duration: true
+        packages-to-scan: com
 
 

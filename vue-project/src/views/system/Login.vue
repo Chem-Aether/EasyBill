@@ -55,7 +55,6 @@
 
 <script setup>
   import { ref, onMounted } from 'vue';
-  import { User, Lock, Key } from '@element-plus/icons-vue';
   import { ElMessage } from 'element-plus';
   import { useRouter } from 'vue-router'; // 引入 useRouter
 
@@ -149,12 +148,12 @@
   
   // 忘记密码
   const handleForgotPassword = () => {
-    console.log('忘记密码');
+    router.push('/forgot-password');
   };
   
   // 注册
   const handleRegister = () => {
-    console.log('注册');
+    router.push('/register');
   };
 </script>
 

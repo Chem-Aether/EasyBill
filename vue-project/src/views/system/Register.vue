@@ -44,6 +44,8 @@
 <script setup>
   import { ref } from 'vue';
   import { useRouter } from 'vue-router';
+  import { ElMessage } from 'element-plus';
+  import { register } from '@/api/user';
   
   const router = useRouter();
   const registerForm = ref({
@@ -52,14 +54,30 @@
     confirmPassword: '',
   });
   
-  const handleRegister = () => {
-    if (registerForm.value.password !== registerForm.value.confirmPassword) {
-      alert('两次输入的密码不一致！');
+  const handleRegister = async () => {
+    if (!registerForm.value.username) {
+      ElMessage.warning('用户名不能为空');
       return;
     }
-    // 模拟注册成功
-    alert('注册成功！');
-    router.push('/login'); // 跳转到登录页面
+    if (!registerForm.value.password) {
+      ElMessage.warning('密码不能为空');
+      return;
+    }
+    if (registerForm.value.password !== registerForm.value.confirmPassword) {
+      ElMessage.warning('两次输入的密码不一致！');
+      return;
+    }
+
+    try {
+      const res = await register({
+        account: registerForm.value.username,
+        password: registerForm.value.password,
+      });
+      ElMessage.success(res.data.msg || '注册成功');
+      router.push('/login'); // 跳转到登录页面
+    } catch (error) {
+      ElMessage.error(error.response?.data?.msg || '注册失败，请稍后重试');
+    }
   };
   
   const goToLogin = () => {
