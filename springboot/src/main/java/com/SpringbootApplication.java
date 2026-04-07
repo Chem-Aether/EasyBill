@@ -7,7 +7,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 @SpringBootApplication(scanBasePackages = "com")
 @MapperScan({
-        "com.bill",
+        "com.bill.mapper",
         "com.user.mapper"
 
 })

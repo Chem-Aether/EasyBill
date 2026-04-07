@@ -1,5 +1,7 @@
 package com.user.service;
 
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.user.entity.User;
 import com.user.mapper.UserMapper;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -7,12 +9,12 @@ import org.springframework.stereotype.Service;
 import java.util.List;
 
 @Service
-public class UserService {
+public class UserService extends ServiceImpl<UserMapper, User> {
     @Autowired
     private UserMapper userMapper;
 
     public List<User> findAll() {
-        return userMapper.findAll();
+        return userMapper.selectList(null);
     }
 
     // 登录逻辑
@@ -47,7 +49,7 @@ public class UserService {
             throw new RuntimeException("密码不能为空");
         }
 
-        User exist = userMapper.selectByAccount(user.getAccount());
+        User exist = userMapper.selectOne(new QueryWrapper<User>().eq("account", user.getAccount()));
         if (exist != null) {
             throw new RuntimeException("账号已存在");
         }

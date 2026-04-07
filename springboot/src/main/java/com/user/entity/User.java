@@ -2,9 +2,11 @@ package com.user.entity;
 
 import lombok.Data;
 import java.util.Date;
+import com.baomidou.mybatisplus.annotation.TableId;
 
 @Data
 public class User {
+    @TableId
     private Integer user_id;          // 用户ID号
     private String account;           // 账号
     private String user_name;         // 姓名

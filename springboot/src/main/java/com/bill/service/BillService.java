@@ -1,5 +1,7 @@
 package com.bill.service;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.bill.entity.Account;
 import com.bill.entity.BillCategory;
 import com.bill.entity.BillDetail;
@@ -8,6 +10,7 @@ import com.bill.entity.CategoryStatistic;
 import com.bill.mapper.AccountMapper;
 import com.bill.mapper.BillCategoryMapper;
 import com.bill.mapper.BillRecordMapper;
+import com.bill.utils.TreeVO;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -16,7 +19,7 @@ import java.math.BigDecimal;
 import java.util.List;
 
 @Service
-public class BillService {
+public class BillService extends ServiceImpl<BillRecordMapper, BillRecord> {
 
     @Autowired
     private BillCategoryMapper billCategoryMapper;
@@ -26,6 +29,7 @@ public class BillService {
 
     @Autowired
     private BillRecordMapper billRecordMapper;
+
 
     public List<BillCategory> listCategories() {
         return billCategoryMapper.findAllActive();
@@ -54,7 +58,7 @@ public class BillService {
         if (category == null || category.getCate_id() == null || category.getCate_id().isBlank()) {
             throw new RuntimeException("分类编码不能为空");
         }
-        billCategoryMapper.update(category);
+        billCategoryMapper.updateById(category);
     }
 
     public void deleteCategory(String cateId) {
@@ -99,26 +103,14 @@ public class BillService {
         accountMapper.updateBalance(outAccount.getId(), outBalance);
         accountMapper.updateBalance(inAccount.getId(), inBalance);
 
-        if (record.getUser_id() == null) {
-            record.setUser_id(1);
-        }
-        if (record.getCurrency() == null || record.getCurrency().isBlank()) {
-            record.setCurrency("CNY");
-        }
         billRecordMapper.insert(record);
     }
 
-    public List<BillDetail> listBillDetails(Integer userId, Integer payType, Integer accountId, String cateId, String keyword, String startTime, String endTime) {
-        if (userId == null) {
-            userId = 1;
-        }
+    public List<BillDetail> queryBillDetails(Integer userId, Integer payType, Integer accountId, String cateId, String keyword, String startTime, String endTime) {
         return billRecordMapper.queryBillDetails(userId, payType, accountId, cateId, keyword, startTime, endTime);
     }
 
-    public List<CategoryStatistic> statisticsByCategory(Integer userId, Integer payType, String startTime, String endTime) {
-        if (userId == null) {
-            userId = 1;
-        }
+    public List<CategoryStatistic> categoryStatistics(Integer userId, Integer payType, String startTime, String endTime) {
         return billRecordMapper.categoryStatistics(userId, payType, startTime, endTime);
     }
 }

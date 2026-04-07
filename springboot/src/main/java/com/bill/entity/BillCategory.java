@@ -2,9 +2,11 @@ package com.bill.entity;
 
 import lombok.Data;
 import java.util.Date;
+import com.baomidou.mybatisplus.annotation.TableId;
 
 @Data
 public class BillCategory {
+    @TableId
     private String cate_id;
     private String class_name;
     private String parent_cate;

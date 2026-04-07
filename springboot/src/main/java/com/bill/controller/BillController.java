@@ -75,7 +75,7 @@ public class BillController {
             @RequestParam(required = false) String endTime,
             @RequestParam(required = false) Integer userId
     ) {
-        return ResponseEntity.ok(Result.success(billService.listBillDetails(userId, payType, accountId, cateId, keyword, startTime, endTime)));
+        return ResponseEntity.ok(Result.success(billService.queryBillDetails(userId, payType, accountId, cateId, keyword, startTime, endTime)));
     }
 
     @PostMapping("/record")
@@ -97,6 +97,6 @@ public class BillController {
             @RequestParam(required = false) String endTime,
             @RequestParam(required = false) Integer userId
     ) {
-        return ResponseEntity.ok(Result.success(billService.statisticsByCategory(userId, payType, startTime, endTime)));
+        return ResponseEntity.ok(Result.success(billService.categoryStatistics(userId, payType, startTime, endTime)));
     }
 }

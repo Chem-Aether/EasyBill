@@ -1,17 +1,15 @@
 package com.bill.mapper;
 
+import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.bill.entity.BillDetail;
 import com.bill.entity.CategoryStatistic;
 import com.bill.entity.BillRecord;
-import org.apache.ibatis.annotations.*;
+import org.apache.ibatis.annotations.Param;
+import org.apache.ibatis.annotations.Select;
+
 import java.util.List;
 
-@Mapper
-public interface BillRecordMapper {
-    @Insert("INSERT INTO bill_record(out_account_id, in_account_id, counterparty_name, cate_id, pay_type, amount, currency, bill_time, commodity, remark, user_id) " +
-            "VALUES(#{out_account_id}, #{in_account_id}, #{counterparty_name}, #{cate_id}, #{pay_type}, #{amount}, #{currency}, #{bill_time}, #{commodity}, #{remark}, #{user_id})")
-    int insert(BillRecord record);
-
+public interface BillRecordMapper extends BaseMapper<BillRecord> {
     @Select({
             "<script>",
             "SELECT * FROM v_bill_detail WHERE user_id = #{userId}",
