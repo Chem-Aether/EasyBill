@@ -44,7 +44,7 @@ public class UserContorller {
         try {
             // 验证账号密码
             User loginUser = userService.login(user.getAccount(), user.getPassword());
-            String token = jwtUtil.createToken(loginUser.getUser_id(), loginUser.getAccount());
+            String token = jwtUtil.createToken(loginUser.getUserId(), loginUser.getAccount());
 
             loginUser.setPassword(null);
 

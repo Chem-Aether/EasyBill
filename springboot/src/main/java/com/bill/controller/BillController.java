@@ -19,50 +19,7 @@ public class BillController {
     @Autowired
     private BillService billService;
 
-    @GetMapping("/categories")
-    @Operation(summary = "获取可用账单分类")
-    public ResponseEntity<Result> listCategories() {
-        return ResponseEntity.ok(Result.success(billService.listCategories()));
-    }
 
-    @PostMapping("/category")
-    @Operation(summary = "新增账单分类")
-    public ResponseEntity<Result> createCategory(@RequestBody BillCategory category) {
-        try {
-            billService.createCategory(category);
-            return ResponseEntity.ok(Result.success("分类创建成功"));
-        } catch (RuntimeException e) {
-            return new ResponseEntity<>(Result.error(e.getMessage()), HttpStatus.BAD_REQUEST);
-        }
-    }
-
-    @PutMapping("/category")
-    @Operation(summary = "更新账单分类")
-    public ResponseEntity<Result> updateCategory(@RequestBody BillCategory category) {
-        try {
-            billService.updateCategory(category);
-            return ResponseEntity.ok(Result.success("分类更新成功"));
-        } catch (RuntimeException e) {
-            return new ResponseEntity<>(Result.error(e.getMessage()), HttpStatus.BAD_REQUEST);
-        }
-    }
-
-    @DeleteMapping("/category/{cateId}")
-    @Operation(summary = "删除账单分类")
-    public ResponseEntity<Result> removeCategory(@PathVariable String cateId) {
-        try {
-            billService.deleteCategory(cateId);
-            return ResponseEntity.ok(Result.success("分类已删除"));
-        } catch (RuntimeException e) {
-            return new ResponseEntity<>(Result.error(e.getMessage()), HttpStatus.BAD_REQUEST);
-        }
-    }
-
-    @GetMapping("/accounts")
-    @Operation(summary = "查询账户列表")
-    public ResponseEntity<Result> listAccounts(@RequestParam(required = false) Integer userId) {
-        return ResponseEntity.ok(Result.success(billService.listAccounts(userId)));
-    }
 
     @GetMapping("/records")
     @Operation(summary = "查询账单记录")

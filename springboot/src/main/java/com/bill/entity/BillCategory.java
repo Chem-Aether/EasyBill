@@ -7,13 +7,11 @@ import com.baomidou.mybatisplus.annotation.TableId;
 @Data
 public class BillCategory {
     @TableId
-    private String cate_id;
-    private String class_name;
-    private String parent_cate;
+    private String cateId;
+    private String className;
+    private String parentCate;
     private Integer level;
     private String icon;
     private Integer type;
-    private Integer is_deleted;
-    private Date create_time;
-    private Date update_time;
+    private Integer isDeleted;
 }
