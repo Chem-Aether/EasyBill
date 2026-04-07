@@ -1,7 +1,7 @@
 <template>
   <div class="map" v-if="CityPercentSource">
     <button class="Up" @click="Up">上一级</button>
-    <div ref="charts" style="width: 100%;height:560px;padding-top: 50px;box-sizing: border-box;"></div>
+    <div ref="charts" style="width: 100%;height:570px;padding-top: 10px;box-sizing: border-box;"></div>
   </div>
 
 </template>
@@ -231,18 +231,25 @@ const charts = ref();
 const MapCode = ref('11');
 //初始化地图数据
 const GeoData = ref();
-import data from '@/assets/china.json'
-
+import data from '@/assets/中国_市.json'
+GeoData.value = data
 
 function CreateMapOption(name,MapData = [],route = true,airport = true,train = true){
   let option = {
           geo: {
               map: name, 
-              roam: false,
+              roam: true,
               selectedMode: false, 
-              zoom: 'zoom',
+              zoom: 1.6,
+              center: [105, 39],
               top: 'top',
               show: true,
+              label: {
+                show: false,
+                fontSize: 15,
+                color: "#ffffff",
+              },
+
               itemStyle: {
                   borderColor: "rgba(111, 241, 184)",
                   borderWidth: 1,
@@ -343,7 +350,6 @@ function CreateMapOption(name,MapData = [],route = true,airport = true,train = t
               align:'left'
             },
             formatter:  (params) => { 
-                  // console.log(params.name,params.value);
                   if(params.value){
                     return `${params.name}<br />已探索：<strong style="color: red;">${params.value}%</strong>`
                   }
@@ -366,12 +372,15 @@ function CreateMapOption(name,MapData = [],route = true,airport = true,train = t
           },
           series: [
             {
-              geoIndex:0,
               type: "map",
               map: name,
-              // data:MapData.foot,
-              //禁止选中
-              selectedMode:false,
+              geoIndex: 0,      // 关键：复用已有的 geo，不新建地图
+              selectedMode: false,
+              silent: true,     // 关键：不响应事件，纯染色
+              label: { show: false }, // 标签交给 geo 显示
+              itemStyle: {
+                opacity: 1 // 保证颜色正常显示
+              }
             },
             {
               name:'airport',
@@ -448,20 +457,26 @@ var myChart = null;
 onMounted(() => {
   
   myChart = echarts.init(charts.value);
-  echarts.registerMap('HK', data);
+  echarts.registerMap('map', GeoData.value);
   
-  myChart.setOption(CreateMapOption('HK', CityPercentSource.value, false, false, false), true);
+  myChart.setOption(CreateMapOption('map', CityPercentSource.value, false, false, false), true);
 
   myChart.on('click',(event) => {
-    GeoData.features.forEach(element => {
+    console.log(data);
+    data.features.forEach(element => {
       if (element.properties.name === event.name)
       {
+        console.log(element.properties);
         MapCode.value = element.properties.adcode;
         console.log(MapCode.value);       
       };
     });
 })
+
+
 })
+
+
 
 function Up(){
   let code;

@@ -6,7 +6,7 @@
 
 后端：SpringBoot + Redis（缓存）
 
-数据库：PostgreSQL
+数据库：mySQL
 
 ## 项目初始化
 
@@ -16,32 +16,23 @@
 npm install
 ```
 
-### Compile and Hot-Reload for Development
+### 前端启动
 
 ```sh
 npm run dev
 ```
 
-### Compile and Minify for Production
+### 前端打包
 
 ```sh
 npm run build
 ```
 
-### 后端初始化
+### redis启动
 
 ```sh
 redis-server
 ```
-
-## API 文档
-## /Login
-默认访问进入Login页面
-
-## /captcha
-
-## 
-
 
 
 
