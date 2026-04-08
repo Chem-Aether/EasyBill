@@ -3,7 +3,7 @@ USE `springdatabase`;
 
 
 CREATE TABLE `user` (
-                        `user_id` INT NOT NULL AUTO_INCREMENT COMMENT '用户ID号',
+                        `user_id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '用户ID号',
                         `account` VARCHAR(50) NOT NULL COMMENT '账号',
                         `user_name` VARCHAR(50) DEFAULT NULL COMMENT '姓名',
                         `password` VARCHAR(100) NOT NULL COMMENT '密码（加密存储）',

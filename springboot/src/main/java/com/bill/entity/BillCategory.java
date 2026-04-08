@@ -1,7 +1,6 @@
 package com.bill.entity;
 
 import lombok.Data;
-import java.util.Date;
 import com.baomidou.mybatisplus.annotation.TableId;
 
 @Data

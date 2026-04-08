@@ -16,7 +16,18 @@
       </div>
       <div class="TicketTable">
       <ul>
-          <li v-for="table,key in each['more']">{{ key }}：{{ table }}</li>
+        <template v-if="each.more.铁路类型">
+          <li v-for="key in trainOrder" :key="key">
+            {{ key }}：{{ each.more[key] || '-' }}
+          </li>
+        </template>
+
+        <!-- 航班 -->
+        <template v-else>
+          <li v-for="key in flightOrder" :key="key">
+            {{ key }}：{{ each.more[key] || '-' }}
+          </li>
+        </template>
       </ul>
       </div>
   </div>
@@ -24,7 +35,10 @@
   
 <script setup>
 import { ref , nextTick} from 'vue'
+import { getTicketData } from '@/api/travel.js'
 
+const trainOrder = ref(['发车时间', '到达时间', '铁路类型', '车型', '里程/km']);
+const flightOrder = ref(['起飞时间', '降落时间', '起点', '终点', '注册号', '机型', '里程/km', '经停']);
 
 const TicketDataSource = ref();
 TicketDataSource.value = [
@@ -84,6 +98,11 @@ TicketDataSource.value = [
         }
     }
 ]
+
+getTicketData().then(res => {
+  console.log('全部票据数据', res.data)
+  TicketDataSource.value = res.data.data
+})
 
 //随机颜色盘
 const color=ref([

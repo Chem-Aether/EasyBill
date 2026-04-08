@@ -1,10 +1,17 @@
 import request from '@/utils/request';
 
 export const getCategories = () => {
-  return request({
-    url: '/bill/categories',
-    method: 'get',
-  });
+    return request({
+        url: '/bill/categories',
+        method: 'get',
+    });
+};
+
+export const getCategoriesTree = () => {
+    return request({
+        url: '/bill/tree',
+        method: 'get',
+    });
 };
 
 export const addCategory = (data) => {

@@ -19,20 +19,24 @@
                 </el-select>
               </el-form-item>
               <el-form-item label="分类">
-                <el-select v-model="queryForm.cateId" placeholder="全部" clearable style="width: 180px;">
-                  <el-option v-for="category in categories" :key="category.cate_id" :label="`${category.icon || ''} ${category.class_name}`" :value="category.cate_id" />
-                </el-select>
+                <el-cascader
+                    v-model="queryForm.cateId"
+                    :options="categories"
+                    placeholder="请选择分类"
+                    clearable
+                    style="width: 280px"
+                />
               </el-form-item>
               <el-form-item label="时间范围">
                 <el-date-picker
-                  v-model="queryForm.dateRange"
-                  type="datetimerange"
-                  start-placeholder="开始日期"
-                  end-placeholder="结束日期"
-                  value-format="yyyy-MM-dd HH:mm:ss"
-                  range-separator="至"
-                  unlink-panels
-                  style="width: 360px;"
+                    v-model="queryForm.dateRange"
+                    type="datetimerange"
+                    start-placeholder="开始日期"
+                    end-placeholder="结束日期"
+                    value-format="yyyy-MM-dd HH:mm:ss"
+                    range-separator="至"
+                    unlink-panels
+                    style="width: 360px;"
                 />
               </el-form-item>
               <el-form-item label="关键词">
@@ -62,11 +66,11 @@
 
           <div class="pagination-wrapper" v-if="records.length">
             <el-pagination
-              background
-              layout="prev, pager, next"
-              :page-size="pageSize"
-              :current-page.sync="currentPage"
-              :total="records.length"
+                background
+                layout="prev, pager, next"
+                :page-size="pageSize"
+                :current-page.sync="currentPage"
+                :total="records.length"
             />
           </div>
         </el-tab-pane>
@@ -92,20 +96,23 @@
                 </el-select>
               </el-form-item>
               <el-form-item label="分类">
-                <el-select v-model="recordForm.cate_id" placeholder="请选择" style="width: 320px;">
-                  <el-option v-for="category in categories" :key="category.cate_id" :label="`${category.icon || ''} ${category.class_name}`" :value="category.cate_id" />
-                </el-select>
+                <el-cascader
+                    v-model="recordForm.cate_id"
+                    :options="categories"
+                    placeholder="请选择分类"
+                    style="width: 320px;"
+                />
               </el-form-item>
               <el-form-item label="金额">
                 <el-input-number v-model="recordForm.amount" :min="0.01" :step="0.01" controls-position="right" style="width: 180px;" />
               </el-form-item>
               <el-form-item label="交易时间">
                 <el-date-picker
-                  v-model="recordForm.bill_time"
-                  type="datetime"
-                  placeholder="选择时间"
-                  value-format="yyyy-MM-dd HH:mm:ss"
-                  style="width: 320px;"
+                    v-model="recordForm.bill_time"
+                    type="datetime"
+                    placeholder="选择时间"
+                    value-format="yyyy-MM-dd HH:mm:ss"
+                    style="width: 320px;"
                 />
               </el-form-item>
               <el-form-item label="对方/名称">
@@ -137,14 +144,14 @@
               </el-form-item>
               <el-form-item label="时间范围">
                 <el-date-picker
-                  v-model="statsForm.dateRange"
-                  type="datetimerange"
-                  start-placeholder="开始日期"
-                  end-placeholder="结束日期"
-                  value-format="yyyy-MM-dd HH:mm:ss"
-                  range-separator="至"
-                  unlink-panels
-                  style="width: 360px;"
+                    v-model="statsForm.dateRange"
+                    type="datetimerange"
+                    start-placeholder="开始日期"
+                    end-placeholder="结束日期"
+                    value-format="yyyy-MM-dd HH:mm:ss"
+                    range-separator="至"
+                    unlink-panels
+                    style="width: 360px;"
                 />
               </el-form-item>
               <el-form-item>
@@ -168,10 +175,10 @@
           <div class="section-panel">
             <el-button type="primary" @click="openCategoryDialog('add')">新增分类</el-button>
           </div>
-          <el-table :data="categories" stripe style="width: 100%;">
-            <el-table-column prop="cate_id" label="分类编码" width="140" />
-            <el-table-column prop="class_name" label="分类名称" width="160" />
-            <el-table-column prop="parent_cate" label="父分类" width="120" />
+          <el-table :data="categoryList" stripe style="width: 100%;">
+            <el-table-column prop="cateId" label="分类编码" width="140" />
+            <el-table-column prop="className" label="分类名称" width="160" />
+            <el-table-column prop="parentCate" label="父分类" width="120" />
             <el-table-column prop="type" label="类型" width="100">
               <template #default="{ row }">
                 <span>{{ typeLabel(row.type) }}</span>
@@ -182,7 +189,7 @@
             <el-table-column label="操作" width="220">
               <template #default="{ row }">
                 <el-button type="primary" size="small" @click="openCategoryDialog('edit', row)">编辑</el-button>
-                <el-button type="danger" size="small" @click="deleteCategory(row.cate_id)">删除</el-button>
+                <el-button type="danger" size="small" @click="deleteCategory(row.cateId)">删除</el-button>
               </template>
             </el-table-column>
           </el-table>
@@ -190,17 +197,17 @@
       </el-tabs>
     </el-card>
 
-    <el-dialog title="分类管理" :visible.sync="categoryDialogVisible" width="480px">
+    <el-dialog title="分类管理" v-model="categoryDialogVisible" width="480px">
       <el-form :model="categoryForm" label-width="110px">
         <el-form-item label="分类编码">
-          <el-input v-model="categoryForm.cate_id" :disabled="categoryDialogMode === 'edit'" placeholder="请输入编码" />
+          <el-input v-model="categoryForm.cateId" :disabled="categoryDialogMode === 'edit'" placeholder="请输入编码" />
         </el-form-item>
         <el-form-item label="分类名称">
-          <el-input v-model="categoryForm.class_name" placeholder="请输入名称" />
+          <el-input v-model="categoryForm.className" placeholder="请输入名称" />
         </el-form-item>
         <el-form-item label="父分类">
-          <el-select v-model="categoryForm.parent_cate" placeholder="请选择父分类" clearable>
-            <el-option v-for="parent in parentCategories" :key="parent.cate_id" :label="parent.class_name" :value="parent.cate_id" />
+          <el-select v-model="categoryForm.parentCate" placeholder="请选择父分类" clearable>
+            <el-option v-for="parent in parentCategories" :key="parent.cateId" :label="parent.className" :value="parent.cateId" />
           </el-select>
         </el-form-item>
         <el-form-item label="层级">
@@ -235,6 +242,7 @@ import {
   getBillRecords,
   createBillRecord,
   getCategories,
+  getCategoriesTree,
   getAccounts,
   getCategoryStatistics,
   addCategory,
@@ -246,6 +254,7 @@ const activeTab = ref('query');
 const records = ref([]);
 const statistics = ref([]);
 const categories = ref([]);
+const categoryList = ref([]);
 const accounts = ref([]);
 const loadingRecords = ref(false);
 const currentPage = ref(1);
@@ -279,15 +288,15 @@ const statsForm = reactive({
 const categoryDialogVisible = ref(false);
 const categoryDialogMode = ref('add');
 const categoryForm = reactive({
-  cate_id: '',
-  class_name: '',
-  parent_cate: '',
+  cateId: '',
+  className: '',
+  parentCate: '',
   level: 2,
   icon: '',
   type: 1,
 });
 
-const parentCategories = computed(() => categories.value.filter((item) => item.level === 1));
+const parentCategories = computed(() => categoryList.value.filter((item) => item.level === 1));
 
 const paginatedRecords = computed(() => {
   const start = (currentPage.value - 1) * pageSize.value;
@@ -296,24 +305,25 @@ const paginatedRecords = computed(() => {
 
 const typeLabel = (type) => {
   switch (type) {
-    case 1:
-      return '支出';
-    case 2:
-      return '收入';
-    case 3:
-      return '互转';
-    default:
-      return '未知';
+    case 1: return '支出';
+    case 2: return '收入';
+    case 3: return '互转';
+    default: return '未知';
   }
 };
 
 const loadBaseData = async () => {
   try {
-    const [cateRes, accountRes] = await Promise.all([getCategories(), getAccounts(1)]);
-    categories.value = cateRes.data.data || [];
-    accounts.value = accountRes.data.data || [];
+    const [treeRes, accountRes, listRes] = await Promise.all([
+      getCategoriesTree(),
+      getAccounts(1),
+      getCategories()
+    ]);
+    categories.value = treeRes.data || [];
+    accounts.value = accountRes.data || [];
+    categoryList.value = listRes.data || [];
   } catch (error) {
-    ElMessage.error('加载账户或分类失败');
+    ElMessage.error('加载数据失败');
   }
 };
 
@@ -324,7 +334,7 @@ const searchRecords = async () => {
     const params = {
       payType: queryForm.payType,
       accountId: queryForm.accountId,
-      cateId: queryForm.cateId,
+      cateId: queryForm.cateId?.join('/'),
       keyword: queryForm.keyword,
     };
     if (queryForm.dateRange?.length === 2) {
@@ -366,16 +376,16 @@ const submitRecord = async () => {
     ElMessage.warning('请选择账单类型');
     return;
   }
-  if (!recordForm.out_account_id || !recordForm.in_account_id) {
-    ElMessage.warning('请选择转出和转入账户');
+  if (!recordForm.out_account_id) {
+    ElMessage.warning('请选择转出账户');
     return;
   }
   if (!recordForm.amount) {
-    ElMessage.warning('请输入账单金额');
+    ElMessage.warning('请输入金额');
     return;
   }
   if (!recordForm.bill_time) {
-    ElMessage.warning('请选择交易时间');
+    ElMessage.warning('请选择时间');
     return;
   }
 
@@ -383,22 +393,19 @@ const submitRecord = async () => {
     await createBillRecord({
       ...recordForm,
       user_id: 1,
+      cate_id: recordForm.cate_id?.at(-1)
     });
-    ElMessage.success('账单保存成功');
+    ElMessage.success('保存成功');
     resetRecordForm();
-    if (activeTab.value === 'query') {
-      searchRecords();
-    }
+    searchRecords();
   } catch (error) {
-    ElMessage.error(error.response?.data?.msg || '保存账单失败');
+    ElMessage.error('保存失败');
   }
 };
 
 const loadStatistics = async () => {
   try {
-    const params = {
-      payType: statsForm.payType,
-    };
+    const params = { payType: statsForm.payType };
     if (statsForm.dateRange?.length === 2) {
       params.startTime = statsForm.dateRange[0];
       params.endTime = statsForm.dateRange[1];
@@ -406,23 +413,23 @@ const loadStatistics = async () => {
     const res = await getCategoryStatistics(params);
     statistics.value = res.data.data || [];
   } catch (error) {
-    ElMessage.error('加载统计数据失败');
+    ElMessage.error('统计加载失败');
   }
 };
 
 const openCategoryDialog = (mode, row = null) => {
   categoryDialogMode.value = mode;
   if (mode === 'edit' && row) {
-    categoryForm.cate_id = row.cate_id;
-    categoryForm.class_name = row.class_name;
-    categoryForm.parent_cate = row.parent_cate;
+    categoryForm.cateId = row.cateId;
+    categoryForm.className = row.className;
+    categoryForm.parentCate = row.parentCate;
     categoryForm.level = row.level;
     categoryForm.icon = row.icon;
     categoryForm.type = row.type;
   } else {
-    categoryForm.cate_id = '';
-    categoryForm.class_name = '';
-    categoryForm.parent_cate = '';
+    categoryForm.cateId = '';
+    categoryForm.className = '';
+    categoryForm.parentCate = '';
     categoryForm.level = 2;
     categoryForm.icon = '';
     categoryForm.type = 1;
@@ -431,43 +438,33 @@ const openCategoryDialog = (mode, row = null) => {
 };
 
 const submitCategory = async () => {
-  if (!categoryForm.cate_id) {
-    ElMessage.warning('请输入分类编码');
-    return;
-  }
-  if (!categoryForm.class_name) {
-    ElMessage.warning('请输入分类名称');
+  if (!categoryForm.cateId || !categoryForm.className) {
+    ElMessage.warning('请填写完整信息');
     return;
   }
   try {
     if (categoryDialogMode.value === 'edit') {
       await updateCategory({ ...categoryForm });
-      ElMessage.success('分类更新成功');
+      ElMessage.success('修改成功');
     } else {
       await addCategory({ ...categoryForm });
-      ElMessage.success('分类新增成功');
+      ElMessage.success('新增成功');
     }
     categoryDialogVisible.value = false;
-    const res = await getCategories();
-    categories.value = res.data.data || [];
+    await loadBaseData();
   } catch (error) {
-    ElMessage.error(error.response?.data?.msg || '保存分类失败');
+    ElMessage.error('保存失败');
   }
 };
 
 const deleteCategory = async (cateId) => {
   try {
-    await ElMessageBox.confirm('确认删除该分类吗？删除后无法恢复', '提示', {
-      type: 'warning',
-    });
+    await ElMessageBox.confirm('确认删除？', '提示', { type: 'warning' });
     await removeCategory(cateId);
-    ElMessage.success('分类已删除');
-    const res = await getCategories();
-    categories.value = res.data.data || [];
+    ElMessage.success('删除成功');
+    await loadBaseData();
   } catch (error) {
-    if (error !== 'cancel' && error !== 'Close') {
-      ElMessage.error(error.response?.data?.msg || '删除分类失败');
-    }
+    ElMessage.error('删除失败');
   }
 };
 
@@ -481,30 +478,24 @@ onMounted(async () => {
 .bill-page {
   padding: 20px;
 }
-
 .bill-card {
   min-height: 820px;
 }
-
 .page-title {
   font-size: 24px;
   font-weight: 700;
   margin-bottom: 18px;
 }
-
 .section-panel {
   margin-bottom: 20px;
 }
-
 .query-form {
   flex-wrap: wrap;
   gap: 16px;
 }
-
 .record-form {
   max-width: 760px;
 }
-
 .pagination-wrapper {
   margin-top: 16px;
   display: flex;

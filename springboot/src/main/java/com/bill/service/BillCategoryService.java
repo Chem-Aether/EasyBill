@@ -30,7 +30,7 @@ public class BillCategoryService {
         Map<String, Map<String, Object>> nodeMap = new HashMap<>();
         for (BillCategory c : list) {
             Map<String, Object> node = new HashMap<>();
-            node.put("id", c.getCateId());
+            node.put("cateId", c.getCateId());
             node.put("name", c.getClassName());
             node.put("type", c.getType());
             node.put("icon", c.getIcon());
