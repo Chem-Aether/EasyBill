@@ -8,3 +8,12 @@ export const getTicketData = (type = 'all') => {
         params: { type }
     })
 }
+
+
+export const getTicketStatistics = (type = 'all') => {
+    return request({
+        url: '/travel/getTicketStatistics',
+        method: 'get',
+        params: { type }
+    })
+}

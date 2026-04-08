@@ -1,6 +1,6 @@
 <template>
-    <div class="Piecharts" v-if="PanelDataSource"><Border>
-      <SmallTittle>{{ PanelDataSource.panel2.tittle }}数据统计</SmallTittle>
+    <div class="Piecharts" ><Border>
+      <SmallTittle>{{ Tittle }}数据统计</SmallTittle>
       <div class="icon" @click="ChangeChart">
         <svg t="1696779812136" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="3923" width="200" height="200">
           <path d="M674.496 1019.072l342.848-237.312a12.992 12.992 0 0 0 5.696-10.816 12.992 12.992 0 0 0-5.696-10.752l-342.848-237.44a11.776 11.776 0 0 0-12.992-0.256 12.8 12.8 0 0 0-5.824 12.096v168.64H365.632s-156.352 3.968-195.84-115.712a310.272 310.272 0 0 0 124.288 219.712c30.08 20.928 65.536 31.872 101.696 31.36h257.984v168.704c0.256 4.992 2.944 9.6 7.168 11.968a13.312 13.312 0 0 0 13.568-0.192zM352.512 3.008L9.792 240.32a12.992 12.992 0 0 0-5.696 10.816c0 4.352 2.176 8.448 5.696 10.816L352.512 499.2c3.968 2.688 8.96 2.816 12.992 0.32a12.8 12.8 0 0 0 5.888-12.096V318.784h290.048s156.288-3.84 195.84 115.776a310.272 310.272 0 0 0-124.288-219.712 173.632 173.632 0 0 0-101.76-31.36H371.584V14.72a12.8 12.8 0 0 0-5.888-12.16 11.776 11.776 0 0 0-13.12 0.384z" fill="#ffffff" p-id="3924"></path>
@@ -16,61 +16,27 @@
 import SmallTittle from '@/views/travel/MainWindow/SmallTittle.vue';
 import {onMounted, ref} from 'vue'
 import * as echarts from 'echarts';
-
+import { getTicketStatistics } from '@/api/travel.js'
 
 const PanelDataSource = ref()
-PanelDataSource.value = {
-  "panel1":{
-      "tittle":"铁路",
-      "data":{
-          "里程":"4090",
-          "时长":"7:51",
-          "车次":"3",
-          "站点":"4"
-      }
-  },
-  "panel2":{
-    "tittle":"铁路",
-    "data":[
-      {
-        "name":"普快",
-        "num":"3"
-      },
-      {
-        "name":"动车",
-        "num":"2"
-      },
-      {
-        "name":"高速动车",
-        "num":"3"
-      },
-      {
-        "name":"直达特快",
-        "num":"4"
-      },
-      {
-        "name":"特快列车",
-        "num":"5"
-      },
-      {
-        "name":"城际列车",
-        "num":"6"
-      }
-    ]
-  }
-}
+
+
+getTicketStatistics().then(res => {
+  console.log('统计数据', res.data)
+  PanelDataSource.value = res.data.data || []
+  initChart()
+})
 
 //取DOM元素
+const Tittle = ref("铁路");
 const Pie = ref();
-
-
 
 //生成配置项
 function CreatePieOption(Data,Is) {
   if(Is){
     return {
             dataset: {
-              dimensions: ['name','num'],
+              dimensions: ['name','value'],
               source: Data,
             },
             series: [
@@ -108,7 +74,7 @@ function CreatePieOption(Data,Is) {
               formatter:  (params) => { 
                 // console.log(params[0].color);
                 var tip = `${params[0].value.name} 
-                            <br/><strong style="color: ${params[0].color};font-size:20px;">${params[0].value.num}</strong> 次`
+                            <br/><strong style="color: ${params[0].color};font-size:20px;">${params[0].value.value}</strong> 次`
                             return  tip
                     }
             },
@@ -119,7 +85,7 @@ function CreatePieOption(Data,Is) {
               containLabel: true,
             },
             dataset: {
-              dimensions: ['name','num'],
+              dimensions: ['name','value'],
               source: Data,
             },
             yAxis: { 
@@ -186,7 +152,7 @@ function CreatePieOption(Data,Is) {
                     fontSize: '15px',
                     color: '#ffff',
                     formatter:  (params) => { 
-                        return  params.value.num
+                        return  params.value.value
                     }
                 }
               }
@@ -211,19 +177,16 @@ var IsPie = ref(false);
 
 //初始化挂载
 var PieChart = null;
-onMounted(() => {
-  //获取航空铁路统计数据
-  console.log(PanelDataSource.value )
-    console.log('DOM 已更新');
-    PieChart = echarts.init(Pie.value);
-    PieChart.setOption(CreatePieOption(PanelDataSource.value.panel2.data,IsPie.value),true); 
-  }
-)
+function initChart() {
+  if (!Pie.value) return
+  PieChart = echarts.init(Pie.value)
+  PieChart.setOption(CreatePieOption(PanelDataSource.value, IsPie.value))
+}
 
 //按钮切换事件
 function ChangeChart(){
   IsPie.value=!IsPie.value;
-  PieChart.setOption(CreatePieOption(PanelDataSource.value.panel2.data,IsPie.value),true);
+  PieChart.setOption(CreatePieOption(PanelDataSource.value,IsPie.value));
 }
 
 </script>

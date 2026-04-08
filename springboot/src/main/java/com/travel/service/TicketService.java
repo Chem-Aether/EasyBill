@@ -1,5 +1,7 @@
 package com.travel.service;
 
+import com.baomidou.mybatisplus.core.enums.SqlKeyword;
+import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.travel.entity.TrainRecord;
 import com.travel.entity.FlightRecord;
 import com.travel.mapper.FlightRecordMapper;
@@ -22,7 +24,6 @@ public class TicketService {
     @Autowired
     private FlightRecordMapper flightRecordMapper;
 
-    // ====================== 前端展示票据接口（支持混合排序） ======================
     public List<Map<String, Object>> getTicketList(String type) {
         List<Map<String, Object>> trainList = new ArrayList<>();
         List<Map<String, Object>> flightList = new ArrayList<>();
@@ -62,9 +63,16 @@ public class TicketService {
         return isTrain ? trainList : flightList;
     }
 
-//    public Object getStatisticsData(){
-//        return {};
-//    }
+    public List<Map<String, Object>> getTravelStatistics() {
+        List<Map<String, Object>> list = trainRecordMapper.selectMaps(
+                Wrappers.<TrainRecord>query()
+                        .groupBy("train_type")
+                        .orderByAsc("train_type")
+                        .select("train_type as name", "count(*) as value")
+        );
+
+        return list;
+    }
 
     // ====================== 火车格式化（添加临时排序时间） ======================
     private List<Map<String, Object>> getTrainTickets() {
