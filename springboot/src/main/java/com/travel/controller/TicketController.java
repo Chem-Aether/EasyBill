@@ -29,7 +29,7 @@ public class TicketController {
     @Operation(summary = "查询出行票据统计信息")
     public ResponseEntity<Result> getTicketStatistics(@RequestParam String type) {
         return ResponseEntity.ok(
-                Result.success(ticketService.getTravelStatistics())
+                Result.success(ticketService.getTravelStatistics(type))
         );
     }
 
@@ -37,7 +37,7 @@ public class TicketController {
     @Operation(summary = "查询出行面板数据")
     public ResponseEntity<Result> getTicketDashboard(@RequestParam String type) {
         return ResponseEntity.ok(
-                Result.success()
+                Result.success(ticketService.getTicketDashboard(type))
         );
     }
 }

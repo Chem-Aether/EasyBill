@@ -18,11 +18,11 @@
           </div>
           <div class="UnderLine"></div>
           </a>
-        </div>           
-      </div>          
-    </Border>    
+        </div>
+      </div>
+    </Border>
   </div>
-  
+
 </template>
 
 <script setup>
@@ -83,7 +83,7 @@ ScenicSpotSource.value = [
       "Adder":"陕西省/西安市/临潼区",
       "Rank":"red"
     }
-  
+
   ]
 
 
@@ -94,7 +94,7 @@ const AutoScroll = ref()
 let Timer = null;
 onMounted(()=>{
 
-  
+
 })
 
 function scroll(){
@@ -113,7 +113,7 @@ function mEnter(){
 }
 
 function mLeave() {
-  Timer = setInterval(scroll,10); 
+  Timer = setInterval(scroll,10);
 }
 
 function mScroll(event){
@@ -129,7 +129,7 @@ function SetText(params) {
     case '1':
       return '<span style="color: rgb(255, 0, 0)">人文景区</span>'
       break;
-  
+
     default:
       return '<span style="color: white">城市景区</span>'
       break;
@@ -142,7 +142,7 @@ function SetText(params) {
   .ListTable{
     font-size: 30px;
     text-align: center;
-    
+
     box-sizing:border-box;
     padding: 5px 10px;
     height: 340px;

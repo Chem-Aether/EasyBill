@@ -27,7 +27,7 @@ service.interceptors.request.use(
 service.interceptors.response.use(
     (response) => {
         // 2xx 进入这里：直接返回数据
-        return response
+        return response.data
     },
     (error) => {
         // 非 2xx 进入这里：统一处理全局异常

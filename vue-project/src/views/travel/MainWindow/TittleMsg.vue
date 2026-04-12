@@ -12,21 +12,15 @@
 <script setup>
 import { ref } from 'vue'
 
-// import { storeToRefs  } from 'pinia'
-// import { usePanelDataSourceStore} from '@/store'
-// //导入组件数据
-// const DataSourceStore = usePanelDataSourceStore()
-// //标题总统计数据  Total
-// const {Total} = storeToRefs(DataSourceStore)
-
 //初始化标题总统计数据
-// import {getTotalData} from '@/aips'
+import {statsSpotCount} from '@/api/travel.js'
+
 const Total = ref();
-Total.value = {
-    "province":5,
-    "city":24,
-    "area":75
-}
+statsSpotCount().then(res => {
+  console.log('统计数据', res.data)
+  Total.value = res.data || []
+})
+
 
 </script>
 

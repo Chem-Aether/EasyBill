@@ -1,12 +1,12 @@
 <template>
   <div class="Right">
     <div class="Tittle">
-      <SmallTittle  style="margin-bottom: 10px;">机票/车票统计</SmallTittle>
+      <SmallTittle style="margin-bottom: 10px;">机票/车票统计</SmallTittle>
     </div>
-
-    <div class="RightTable" ref="Scroll" @wheel="JSScroll">
+    <div class="RightTable">
       <Ticket />
     </div>
+
     <div class="RightModel">
       <Model />
     </div>
@@ -17,55 +17,51 @@
 import Ticket from './Ticket.vue'
 import Model from './Model.vue'
 import SmallTittle from '@/views/travel/MainWindow/SmallTittle.vue';
-import {onMounted, ref } from 'vue'
-
-// 模拟滚动条
-const Scroll=ref(null);
-function JSScroll(event){
-  Scroll.value.scrollTop+=event.deltaY;
-}
-
 </script>
 
-
-
 <style scoped>
-*{
-  list-style-type: none;
+* {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
 }
-.Right{
-  box-sizing:border-box;
-  padding: 5px 10px;
-  padding-bottom: 0px;
+
+.Right {
   height: 1020px;
   width: 560px;
   background-color: rgba(81, 46, 238, 0.044);
+  padding: 5px 10px 0;
+  display: flex;
+  flex-direction: column;
 }
+
 .Tittle {
-  box-sizing:border-box;
   height: 45px;
+  flex-shrink: 0;
 }
 
-.RightTable{
-    width: 540px;
-    height: 665px;
-  
-    overflow-x: auto;
-    overflow-y: hidden;  
+.RightTable {
+  width: 540px;
+  height: calc(100% - 45px - 300px);
 
-    scroll-behavior: smooth;
-    
-    display: flex;
-    align-items: center;
-    flex-direction: column;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scroll-behavior: smooth;
+
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
-.RightModel{
-  box-sizing:border-box;
 
+/* Chrome 隐藏滚动条 */
+.RightTable::-webkit-scrollbar {
+  display: none;
+}
+
+.RightModel {
   width: 540px;
   height: 300px;
-
   background-color: bisque;
+  flex-shrink: 0;
 }
-
 </style>

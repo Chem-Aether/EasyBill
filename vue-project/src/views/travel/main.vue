@@ -6,7 +6,6 @@
   :fullScreen="false"
   :boxStyle="{
     background: '#03050c',
-
   }"
   :wrapperStyle="null"
   :autoScale="true"
@@ -52,7 +51,6 @@ function Floot(event){
   ShowAirport.value=false;
   ShowRoute.value = false;
   ShowTrain.value = false;
-  Fresh.value=!Fresh.value;
 }
 function Plane(event){
   //设置为航空面板，航线图
@@ -60,7 +58,6 @@ function Plane(event){
   ShowAirport.value=true;
   ShowRoute.value = true;
   ShowTrain.value = false;
-  Fresh.value=!Fresh.value;
 }
 function Train(event){
   //设置为铁路面板，列车图
@@ -68,7 +65,6 @@ function Train(event){
   ShowAirport.value=false;
   ShowRoute.value = false;
   ShowTrain.value = true;
-  Fresh.value=!Fresh.value;
 }
 </script>
 

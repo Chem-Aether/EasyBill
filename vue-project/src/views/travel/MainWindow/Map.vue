@@ -1,5 +1,5 @@
 <template>
-  <div class="map" v-if="CityPercentSource">
+  <div class="map" v-if="showCityList">
     <button class="Up" @click="Up">上一级</button>
     <div ref="charts" style="width: 100%;height:570px;padding-top: 10px;box-sizing: border-box;"></div>
   </div>
@@ -7,252 +7,52 @@
 </template>
 
 <script setup>
-import { ref, onMounted ,watch} from 'vue';
+import { ref, onMounted ,watch, nextTick} from 'vue';
+import * as echarts from 'echarts';
+import {getTicketData, getVisitedCities} from '@/api/travel.js'
+import data from '@/assets/中国_市.json'
 
-// 城市足迹
-const CityPercentSource = ref();
 // 航线
 const Route = ref();
 // 机场
 const Airport  = ref();
 // 火车站
 const RailwayStation  = ref();
-
-CityPercentSource.value = [
-    {
-        "name": "北京市",
-        "went": "3",
-        "total": "16",
-        "percent": "18.75"
-    },
-    {
-        "name": "江苏省",
-        "went": "2",
-        "total": "13",
-        "percent": "15.38"
-    },
-    {
-        "name": "浙江省",
-        "went": "5",
-        "total": "11",
-        "percent": "45.45"
-    },
-    {
-        "name": "安徽省",
-        "went": "2",
-        "total": "16",
-        "percent": "12.5"
-    },
-    {
-        "name": "福建省",
-        "went": "7",
-        "total": "9",
-        "percent": "77.77"
-    },
-    {
-        "name": "江西省",
-        "went": "3",
-        "total": "11",
-        "percent": "27.27"
-    },
-    {
-        "name": "山东省",
-        "went": "1",
-        "total": "16",
-        "percent": "6.25"
-    },
-    {
-        "name": "河南省",
-        "went": "2",
-        "total": "17",
-        "percent": "11.76"
-    },
-    {
-        "name": "湖北省",
-        "went": "1",
-        "total": "13",
-        "percent": "7.69"
-    },
-    {
-        "name": "湖南省",
-        "went": "1",
-        "total": "14",
-        "percent": "7.14"
-    },
-    {
-        "name": "广东省",
-        "went": "3",
-        "total": "21",
-        "percent": "14.28"
-    },
-    {
-        "name": "天津市",
-        "went": "3",
-        "total": "16",
-        "percent": "18.75"
-    },
-    {
-        "name": "广西壮族自治区",
-        "went": "6",
-        "total": "14",
-        "percent": "42.85"
-    },
-    {
-        "name": "海南省",
-        "went": "2",
-        "total": "4",
-        "percent": "50"
-    },
-    {
-        "name": "重庆市",
-        "went": "2",
-        "total": "38",
-        "percent": "5.26"
-    },
-    {
-        "name": "四川省",
-        "went": "0",
-        "total": "21",
-        "percent": "0"
-    },
-    {
-        "name": "贵州省",
-        "went": "0",
-        "total": "9",
-        "percent": "0"
-    },
-    {
-        "name": "云南省",
-        "went": "0",
-        "total": "16",
-        "percent": "0"
-    },
-    {
-        "name": "西藏自治区",
-        "went": "0",
-        "total": "7",
-        "percent": "0"
-    },
-    {
-        "name": "陕西省",
-        "went": "8",
-        "total": "10",
-        "percent": "80"
-    },
-    {
-        "name": "甘肃省",
-        "went": "2",
-        "total": "14",
-        "percent": "14.28"
-    },
-    {
-        "name": "青海省",
-        "went": "1",
-        "total": "8",
-        "percent": "12.5"
-    },
-    {
-        "name": "河北省",
-        "went": "1",
-        "total": "11",
-        "percent": "9.09"
-    },
-    {
-        "name": "宁夏回族自治区",
-        "went": "4",
-        "total": "5",
-        "percent": "80"
-    },
-    {
-        "name": "新疆维吾尔自治区",
-        "went": "2",
-        "total": "14",
-        "percent": "14.28"
-    },
-    {
-        "name": "台湾省",
-        "went": "0",
-        "total": "5",
-        "percent": "0"
-    },
-    {
-        "name": "香港特别行政区",
-        "went": "0",
-        "total": "4",
-        "percent": "0"
-    },
-    {
-        "name": "澳门特别行政区",
-        "went": "0",
-        "total": "5",
-        "percent": "0"
-    },
-    {
-        "name": "山西省",
-        "went": "1",
-        "total": "11",
-        "percent": "9.09"
-    },
-    {
-        "name": "内蒙古自治区",
-        "went": "1",
-        "total": "12",
-        "percent": "8.33"
-    },
-    {
-        "name": "辽宁省",
-        "went": "1",
-        "total": "14",
-        "percent": "7.14"
-    },
-    {
-        "name": "吉林省",
-        "went": "1",
-        "total": "9",
-        "percent": "11.11"
-    },
-    {
-        "name": "黑龙江省",
-        "went": "1",
-        "total": "13",
-        "percent": "7.69"
-    },
-    {
-        "name": "上海市",
-        "went": "1",
-        "total": "16",
-        "percent": "6.25"
-    }
-]
-
-//取Dom元素
-const charts = ref();
-// 地图编号
+// DOM元素
+const charts = ref(null);
+// 城市足迹
+const showCityList = ref([]);
+// 地图编码
 const MapCode = ref('11');
-//初始化地图数据
-const GeoData = ref();
-import data from '@/assets/中国_市.json'
+// 注册图表
+let myChart = null;
+
+const GeoData = ref(data);
 GeoData.value = data
+
+
 
 function CreateMapOption(name,MapData = [],route = true,airport = true,train = true){
   let option = {
           geo: {
-              map: name, 
+              map: name,
               roam: true,
-              selectedMode: false, 
+              selectedMode: false,
               zoom: 1.6,
               center: [105, 39],
               top: 'top',
               show: true,
               label: {
-                show: false,
-                fontSize: 15,
-                color: "#ffffff",
+                show: true,
+                color: '#ffffff',
+                formatter: (params) => {
+                  return MapData.includes(params.name) ? params.name : ''
+                }
               },
-
+              // 地图样式
               itemStyle: {
                   borderColor: "rgba(111, 241, 184)",
-                  borderWidth: 1,
+                  borderWidth: 0.4,
                   areaColor: {
                       type: "radial",
                       x: 0.5,
@@ -275,6 +75,7 @@ function CreateMapOption(name,MapData = [],route = true,airport = true,train = t
                   shadowOffsetY: 2,
                   shadowBlur: 10,
               },
+              // 鼠标悬停样式
               emphasis: {
                   label: {
                       show: false,
@@ -304,18 +105,8 @@ function CreateMapOption(name,MapData = [],route = true,airport = true,train = t
           visualMap: {
             type:'piecewise',
             show:false,
-            splitNumber:10, 
             pieces: [
-              {lte:100,gt:90,color:'rgba(37, 163, 223)'},
-              {lte:90,gt:80,color:'rgba(49, 171, 226)'},
-              {lte:80,gt:70,color:'rgba(75, 187, 233)'},
-              {lte:70,gt:60,color:'rgba(87, 195, 236)'},
-              {lte:60,gt:50,color:'rgba(100, 204, 239)'},
-              {lte:50,gt:40,color:'rgba(112, 212, 242)'},
-              {lte:40,gt:30,color:'rgba(125, 220, 245)'},
-              {lte:30,gt:20,color:'rgba(138, 228, 249)'},
-              {lte:20,gt:10,color:'rgba(150, 236, 252,0.8)'},
-              {lte:10,gt:0,color:'rgba(163, 244, 255,0.9)'},
+              {lte: 1,color:'rgba(82,219,174,0.6)'},
               {lte: 0,color:{
                       type: "radial",
                       x: 0.5,
@@ -332,7 +123,7 @@ function CreateMapOption(name,MapData = [],route = true,airport = true,train = t
                           },
                       ],
                       globalCoord: false, // 缺为 false
-                  }}
+                  }},
             ],
             seriesIndex:0,
             left: 20,
@@ -349,7 +140,7 @@ function CreateMapOption(name,MapData = [],route = true,airport = true,train = t
               color:'#ffff',
               align:'left'
             },
-            formatter:  (params) => { 
+            formatter:  (params) => {
                   if(params.value){
                     return `${params.name}<br />已探索：<strong style="color: red;">${params.value}%</strong>`
                   }
@@ -357,10 +148,6 @@ function CreateMapOption(name,MapData = [],route = true,airport = true,train = t
                     return `${params.name}<br /><strong style="color: red;">尚未探索</strong>`
                   }
           }
-          },
-          dataset: {
-            dimensions: ['name','percent'],
-            source: MapData,
           },
           legend:{
             show:false,
@@ -374,13 +161,12 @@ function CreateMapOption(name,MapData = [],route = true,airport = true,train = t
             {
               type: "map",
               map: name,
-              geoIndex: 0,      // 关键：复用已有的 geo，不新建地图
+              geoIndex: 0,
+              data: MapData.map(city => ({name: city,value: 1})),
               selectedMode: false,
-              silent: true,     // 关键：不响应事件，纯染色
-              label: { show: false }, // 标签交给 geo 显示
-              itemStyle: {
-                opacity: 1 // 保证颜色正常显示
-              }
+              silent: true,
+              label: { show: false, },
+              itemStyle: {opacity: 1,},
             },
             {
               name:'airport',
@@ -388,7 +174,7 @@ function CreateMapOption(name,MapData = [],route = true,airport = true,train = t
               type:'scatter',
               data:Route.value,
               coordinateSystem:"geo",
-              itemStyle: {            
+              itemStyle: {
                 borderWidth:1,
                 color: 'rgb(65, 250, 170)',
               },
@@ -396,7 +182,7 @@ function CreateMapOption(name,MapData = [],route = true,airport = true,train = t
                 trigger:'item',
                 formatter:'{b}',
               },
-            },            
+            },
             {
               name:'route',
               geoIndex:0,
@@ -430,7 +216,7 @@ function CreateMapOption(name,MapData = [],route = true,airport = true,train = t
               coordinateSystem:"geo",
               symbol:'path://M895.616384 347.812188q0 10.22977-0.511489 19.436563t-1.534466 19.436563q-9.206793 84.907093-37.338661 163.164835t-71.096903 150.377622-99.228771 138.613387-121.734266 127.872128q-9.206793 11.252747-23.528472 11.252747-15.344655 0-24.551449-11.252747-65.470529-61.378621-122.245754-128.895105t-100.251748-141.170829-71.608392-152.935065-36.315684-165.210789q0-8.183816-0.511489-15.344655t-0.511489-15.344655q0-71.608392 28.131868-135.032967t76.211788-110.481518 113.038961-74.677323 138.613387-27.62038 138.101898 27.62038 112.527473 74.677323 76.211788 110.481518 28.131868 135.032967zM540.643357 507.396603q33.758242 0 63.424575-12.787213t51.66034-34.26973 34.781219-50.637363 12.787213-61.89011-12.787213-61.89011-34.781219-50.637363-51.66034-34.26973-63.424575-12.787213-63.424575 12.787213-52.171828 34.26973-35.292707 50.637363-12.787213 61.89011 12.787213 61.89011 35.292707 50.637363 52.171828 34.26973 63.424575 12.787213z',
               symbolSize:10,
-              itemStyle: {            
+              itemStyle: {
                 // borderWidth:1,
                 color: 'rgb(256,0,0)',
               },
@@ -444,22 +230,24 @@ function CreateMapOption(name,MapData = [],route = true,airport = true,train = t
                 trigger:'item',
                 formatter:'{b}',
               },
-            },   
+            },
           ]
 };
   return option;
 }
 
+getVisitedCities().then(res => {
+  console.log(res.data)
+  showCityList.value = res.data
+  init()
+})
 
+const init = () => {
 
-import * as echarts from 'echarts';
-var myChart = null;
-onMounted(() => {
-  
   myChart = echarts.init(charts.value);
   echarts.registerMap('map', GeoData.value);
-  
-  myChart.setOption(CreateMapOption('map', CityPercentSource.value, false, false, false), true);
+
+  myChart.setOption(CreateMapOption('map', showCityList.value, false, false, false), true);
 
   myChart.on('click',(event) => {
     console.log(data);
@@ -468,13 +256,12 @@ onMounted(() => {
       {
         console.log(element.properties);
         MapCode.value = element.properties.adcode;
-        console.log(MapCode.value);       
+        console.log(MapCode.value);
       };
     });
 })
 
-
-})
+}
 
 
 

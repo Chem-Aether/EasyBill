@@ -1,11 +1,11 @@
 <template>
   <div class="NumCharts" v-if="PanelDataSource"><Border>
-    <SmallTittle >{{ PanelDataSource.panel1.tittle }}数据统计</SmallTittle>
+    <SmallTittle >{{ tittle }}数据统计</SmallTittle>
     <div class="NumCharts-Box" style="width: 100%;height:90%;">
-      <div class="Box-column"  v-for="value,key in PanelDataSource.panel1.data">
-        <span>{{ value }}</span>
+      <div class="Box-column"  v-for="item in PanelDataSource">
+        <span>{{ item.value }}</span>
         <div></div>
-        <p>{{ key }}</p>
+        <p>{{ item.label }}</p>
       </div>
     </div>
   </Border></div>
@@ -14,48 +14,24 @@
 <script setup>
 import SmallTittle from '@/views/travel/MainWindow/SmallTittle.vue';
 import { ref} from 'vue';
+import {getTicketDashboard} from '@/api/travel.js'
 
+const tittle = ref("铁路");
 const PanelDataSource = ref()
 PanelDataSource.value = {
-  "panel1":{
-      "tittle":"铁路",
-      "data":{
-          "里程":"4090",
-          "时长":"7:51",
-          "车次":"3",
-          "站点":"4"
-      }
-  },
-  "panel2":{
     "tittle":"铁路",
     "data":[
-      {
-        "name":"普快",
-        "num":"3"
-      },
-      {
-        "name":"动车",
-        "num":"2"
-      },
-      {
-        "name":"高速动车",
-        "num":"3"
-      },
-      {
-        "name":"直达特快",
-        "num":"4"
-      },
-      {
-        "name":"特快列车",
-        "num":"5"
-      },
-      {
-        "name":"城际列车",
-        "num":"6"
-      }
-    ]
-  }
+      {name:"里程", value:"4090"},
+      {name:"时长", value:"10d7h9m"},
+      {name:"车次", value:"3"},
+      {name:"站点", value:"4"},
+    ],
 }
+
+getTicketDashboard('flight').then(res => {
+  console.log('统计数据', res.data)
+  PanelDataSource.value = res.data || []
+})
 </script>
   
 <style scoped>

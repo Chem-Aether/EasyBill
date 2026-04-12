@@ -23,7 +23,7 @@ const PanelDataSource = ref()
 
 getTicketStatistics().then(res => {
   console.log('统计数据', res.data)
-  PanelDataSource.value = res.data.data || []
+  PanelDataSource.value = res.data || []
   initChart()
 })
 

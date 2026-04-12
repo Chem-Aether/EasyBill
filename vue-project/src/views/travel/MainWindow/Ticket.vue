@@ -1,44 +1,32 @@
 <template>
-  <div class="Ticket" v-if="TicketDataSource" v-for="each in TicketDataSource">
+  <div class="Ticket" v-if="TicketDataSource" v-for="ticket in TicketDataSource">
       <div class="TicketHeader" :style="{ 'background-color': color[getRandomInt(0,color.length)]  }"></div>
       <div class="TicketTittle">
-      <p class="From">{{ each['From'] }}</p>
+      <p class="From">{{ ticket['From'] }}</p>
       <div class="TicketArrow">
-          <p class="TicketCode">{{each['Number']}}</p>
+          <p class="TicketCode">{{ ticket['Number'] }}</p>
           <p class="TicketArea"></p>
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 90.5 5">
               <rect y="3" width="85.5" height="2" transform="translate(85.5 8) rotate(180)"/>
               <polygon points="90.5 5 79.5 0 80.72 5 90.5 5"/>
           </svg>
-          <p>{{each['time']}}</p>            
+          <p>{{ ticket['time'] }}</p>
       </div>
-      <p class="To">{{each['To']}}</p>          
+      <p class="To">{{ ticket['To'] }}</p>
       </div>
       <div class="TicketTable">
-      <ul>
-        <template v-if="each.more.铁路类型">
-          <li v-for="key in trainOrder" :key="key">
-            {{ key }}：{{ each.more[key] || '-' }}
-          </li>
-        </template>
-
-        <!-- 航班 -->
-        <template v-else>
-          <li v-for="key in flightOrder" :key="key">
-            {{ key }}：{{ each.more[key] || '-' }}
-          </li>
-        </template>
-      </ul>
+          <ul>
+            <li v-for="item in ticket.more">
+              {{ item.label }}：{{ item.value || '-' }}
+            </li>
+          </ul>
       </div>
   </div>
 </template>
   
 <script setup>
-import { ref , nextTick} from 'vue'
 import { getTicketData } from '@/api/travel.js'
-
-const trainOrder = ref(['发车时间', '到达时间', '铁路类型', '车型', '里程/km']);
-const flightOrder = ref(['起飞时间', '降落时间', '起点', '终点', '注册号', '机型', '里程/km', '经停']);
+import {ref} from 'vue'
 
 const TicketDataSource = ref();
 TicketDataSource.value = [
@@ -101,7 +89,7 @@ TicketDataSource.value = [
 
 getTicketData().then(res => {
   console.log('全部票据数据', res.data)
-  TicketDataSource.value = res.data.data
+  TicketDataSource.value = res.data
 })
 
 //随机颜色盘
