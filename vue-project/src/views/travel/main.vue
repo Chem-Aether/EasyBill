@@ -44,27 +44,23 @@ import BarCharts from '@/views/travel/MainWindow/BarCharts.vue'
 import TittleMsg from '@/views/travel/MainWindow/TittleMsg.vue'
 import RightTable from '@/views/travel/MainWindow/RightTable.vue'
 
+import { useTravleStore } from '@/stores/TravelStore.js'
+const store = useTravleStore()
 
 function Floot(event){
-  //设置为航空面板，普通地图
-  PanelType.value = 'Normal';
-  ShowAirport.value=false;
-  ShowRoute.value = false;
-  ShowTrain.value = false;
+  //设置为铁路面板，普通地图
+  store.mapName = '铁路';
+  store.mapType = 'floor';
 }
 function Plane(event){
   //设置为航空面板，航线图
-  PanelType.value = 'Flight';
-  ShowAirport.value=true;
-  ShowRoute.value = true;
-  ShowTrain.value = false;
+  store.mapName = '航空';
+  store.mapType = 'flight';
 }
 function Train(event){
   //设置为铁路面板，列车图
-  PanelType.value = 'Train';
-  ShowAirport.value=false;
-  ShowRoute.value = false;
-  ShowTrain.value = true;
+  store.mapName = '铁路';
+  store.mapType = 'train';
 }
 </script>
 

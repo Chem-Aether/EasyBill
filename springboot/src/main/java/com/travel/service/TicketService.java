@@ -4,8 +4,10 @@ import com.baomidou.mybatisplus.core.enums.SqlKeyword;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.travel.entity.TrainRecord;
 import com.travel.entity.FlightRecord;
+import com.travel.entity.TrainStationRecord;
 import com.travel.mapper.FlightRecordMapper;
 import com.travel.mapper.TrainRecordMapper;
+import com.travel.mapper.TrainStationRecordMapper;
 import jakarta.validation.constraints.Null;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -24,6 +26,8 @@ public class TicketService {
     private TrainRecordMapper trainRecordMapper;
     @Autowired
     private FlightRecordMapper flightRecordMapper;
+    @Autowired
+    private TrainStationRecordMapper trainStationRecordMapper;
 
     public List<Map<String, Object>> getTicketList(String type) {
         List<Map<String, Object>> trainList = new ArrayList<>();
@@ -88,6 +92,12 @@ public class TicketService {
                             "IFNULL(SUM(TIMESTAMPDIFF(MINUTE, departure_datetime, arrival_datetime)), 0) AS totalMinutes")
             ).get(0);
 
+            int stationCount = trainStationRecordMapper.selectObjs(
+                    Wrappers.<TrainStationRecord>lambdaQuery()
+                            .select(TrainStationRecord::getStationName)
+                            .groupBy(TrainStationRecord::getStationName)
+            ).size();
+
             long count = ((Number) stats.get("totalCount")).longValue();
             long mileage = ((Number) stats.get("totalMileage")).longValue();
             long minutes = ((Number) stats.get("totalMinutes")).longValue();
@@ -95,7 +105,7 @@ public class TicketService {
             dashboard.add(Map.of("label", "里程", "value", mileage + " km"));
             dashboard.add(Map.of("label", "时长", "value", formatTime(minutes)));
             dashboard.add(Map.of("label", "次数", "value", count));
-            dashboard.add(Map.of("label", "车站", "value", count));
+            dashboard.add(Map.of("label", "车站", "value", stationCount));
         }
 
         if ("flight".equals(type)) {

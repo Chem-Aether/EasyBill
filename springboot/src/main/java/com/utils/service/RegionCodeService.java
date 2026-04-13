@@ -23,6 +23,9 @@ public class RegionCodeService {
         return regionCodeMapper.selectById(code);
     }
 
+    /**
+     * 根据行政编码查询全名
+     */
     public String getFullRegionName(String code) {
         if (code == null || code.trim().isEmpty()) {
             return "";

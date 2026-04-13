@@ -7,9 +7,9 @@
 </template>
 
 <script setup>
-import { ref, onMounted ,watch, nextTick} from 'vue';
+import { ref, onMounted ,watch} from 'vue';
 import * as echarts from 'echarts';
-import {getTicketData, getVisitedCities} from '@/api/travel.js'
+import {getVisitedCities} from '@/api/travel.js'
 import data from '@/assets/中国_市.json'
 
 // 航线
@@ -25,12 +25,20 @@ const showCityList = ref([]);
 // 地图编码
 const MapCode = ref('11');
 // 注册图表
-let myChart = null;
+let MapChart = null;
 
 const GeoData = ref(data);
-GeoData.value = data
 
-
+let station = [
+  {"name":"西安北","value":[108.938512,34.376164]},
+  {"name":"广州南","value":[113.269323,22.988558]},
+  {"name":"西宁","value":[101.814339,36.620183]},
+  {"name":"深圳北","value":[114.029225,22.609581]},
+  {"name":"南京南","value":[118.798171,31.96873]},
+  {"name":"上海虹桥","value":[121.320666,31.194106]},
+  {"name":"咸阳西","value":[108.666737,34.330999]},
+  {"name":"青岛北","value":[120.374402,36.168923]},
+]
 
 function CreateMapOption(name,MapData = [],route = true,airport = true,train = true){
   let option = {
@@ -212,7 +220,7 @@ function CreateMapOption(name,MapData = [],route = true,airport = true,train = t
               Enabled:false,
               geoIndex:0,
               type:'scatter',
-              data:RailwayStation.value,
+              data:station,
               coordinateSystem:"geo",
               symbol:'path://M895.616384 347.812188q0 10.22977-0.511489 19.436563t-1.534466 19.436563q-9.206793 84.907093-37.338661 163.164835t-71.096903 150.377622-99.228771 138.613387-121.734266 127.872128q-9.206793 11.252747-23.528472 11.252747-15.344655 0-24.551449-11.252747-65.470529-61.378621-122.245754-128.895105t-100.251748-141.170829-71.608392-152.935065-36.315684-165.210789q0-8.183816-0.511489-15.344655t-0.511489-15.344655q0-71.608392 28.131868-135.032967t76.211788-110.481518 113.038961-74.677323 138.613387-27.62038 138.101898 27.62038 112.527473 74.677323 76.211788 110.481518 28.131868 135.032967zM540.643357 507.396603q33.758242 0 63.424575-12.787213t51.66034-34.26973 34.781219-50.637363 12.787213-61.89011-12.787213-61.89011-34.781219-50.637363-51.66034-34.26973-63.424575-12.787213-63.424575 12.787213-52.171828 34.26973-35.292707 50.637363-12.787213 61.89011 12.787213 61.89011 35.292707 50.637363 52.171828 34.26973 63.424575 12.787213z',
               symbolSize:10,
@@ -244,12 +252,12 @@ getVisitedCities().then(res => {
 
 const init = () => {
 
-  myChart = echarts.init(charts.value);
+  MapChart = echarts.init(charts.value);
   echarts.registerMap('map', GeoData.value);
 
-  myChart.setOption(CreateMapOption('map', showCityList.value, false, false, false), true);
+  MapChart.setOption(CreateMapOption('map', showCityList.value, false, false, true), true);
 
-  myChart.on('click',(event) => {
+  MapChart.on('click',(event) => {
     console.log(data);
     data.features.forEach(element => {
       if (element.properties.name === event.name)

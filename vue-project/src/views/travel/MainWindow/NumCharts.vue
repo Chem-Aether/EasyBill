@@ -1,6 +1,6 @@
 <template>
   <div class="NumCharts" v-if="PanelDataSource"><Border>
-    <SmallTittle >{{ tittle }}数据统计</SmallTittle>
+    <SmallTittle >{{ mapName }}数据统计</SmallTittle>
     <div class="NumCharts-Box" style="width: 100%;height:90%;">
       <div class="Box-column"  v-for="item in PanelDataSource">
         <span>{{ item.value }}</span>
@@ -13,25 +13,34 @@
 
 <script setup>
 import SmallTittle from '@/views/travel/MainWindow/SmallTittle.vue';
-import { ref} from 'vue';
+import {ref, watch} from 'vue';
+import { storeToRefs } from 'pinia'
 import {getTicketDashboard} from '@/api/travel.js'
+import { useTravleStore } from '@/stores/TravelStore.js'
+const store = useTravleStore();
+const { mapName, mapType } = storeToRefs(store)
+const PanelDataSource = ref();
 
-const tittle = ref("铁路");
-const PanelDataSource = ref()
-PanelDataSource.value = {
-    "tittle":"铁路",
-    "data":[
-      {name:"里程", value:"4090"},
-      {name:"时长", value:"10d7h9m"},
-      {name:"车次", value:"3"},
-      {name:"站点", value:"4"},
-    ],
-}
-
-getTicketDashboard('flight').then(res => {
+// 初始化数据
+getTicketDashboard().then(res => {
   console.log('统计数据', res.data)
   PanelDataSource.value = res.data || []
 })
+
+// 监听mapType变化
+watch(mapType, (newVal) => {
+  if (newVal === 'flight') {
+    getTicketDashboard(newVal).then(res => {
+      PanelDataSource.value = res.data || []
+    })
+  }
+  else{
+    getTicketDashboard('train').then(res => {
+      PanelDataSource.value = res.data || []
+    })
+  }
+})
+
 </script>
   
 <style scoped>

@@ -13,12 +13,13 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/travel")
+@Tag(name = "交通工具票务管理接口", description = "航班/火车/票务相关接口")
 public class TrainRecordController {
 
     @Autowired
     private TrainRecordService trainRecordService;
 
-    @GetMapping("/getall")
+    @GetMapping("/getTrain")
     public ResponseEntity<Result> findAll() {
         return ResponseEntity.ok(
                 Result.success(trainRecordService.findAll())

@@ -21,13 +21,12 @@ const imgList = [
 </script>
 
 <style scoped>
-/* 🔥 固定轮播图外层高度（你自己改高度） */
 .carousel-wrapper {
   width: 100%;
-  height: 360px; /* 这里控制轮播图大小！！！ */
+  height: 360px;
 }
 
-/* 🔥 让 Element 轮播图填满高度 */
+
 :deep(.el-carousel),
 :deep(.el-carousel__container) {
   width: 100%;
