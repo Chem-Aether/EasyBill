@@ -37,6 +37,8 @@ const routes = [
         path: '/travel',
         component: () => import("@/views/travel/main.vue"),
     },
+    { path:'/trainTicket', component: () => import("@/views/travel/admin/trainTicket.vue"), },
+    { path:'/flightTicket', component: () => import("@/views/travel/admin/flightTicket.vue"), },
 
   {
     path: '/exit', 
