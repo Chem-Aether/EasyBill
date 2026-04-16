@@ -19,6 +19,4 @@ public class FootSpot {
     private String spotName;      // 景点名称
     private String spotType;      // 类型
     private LocalDate visitTime;  // 到访日期
-    private LocalDateTime createTime;
-    private LocalDateTime updateTime;
 }

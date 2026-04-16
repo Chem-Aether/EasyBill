@@ -17,10 +17,4 @@ public class FlightRecordController {
     @Autowired
     private FlightRecordService flightRecordService;
 
-    @GetMapping("/getflight")
-    public ResponseEntity<Result> findAll() {
-        return ResponseEntity.ok(
-                Result.success(flightRecordService.findAll())
-        );
-    }
 }

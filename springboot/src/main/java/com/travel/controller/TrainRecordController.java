@@ -1,28 +1,46 @@
 package com.travel.controller;
 
 import com.sysconfig.Result;
+import com.travel.entity.TrainRecord;
 import com.travel.service.TrainRecordService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
-@RequestMapping("/travel")
+@RequestMapping("/travel/train")
 @Tag(name = "交通工具票务管理接口", description = "航班/火车/票务相关接口")
 public class TrainRecordController {
 
     @Autowired
     private TrainRecordService trainRecordService;
 
-    @GetMapping("/getTrain")
-    public ResponseEntity<Result> findAll() {
-        return ResponseEntity.ok(
-                Result.success(trainRecordService.findAll())
-        );
+    @PostMapping("/add")
+    public int add(@RequestBody TrainRecord record) {
+        return trainRecordService.add(record);
+    }
+
+    @DeleteMapping("/delete/{id}")
+    public int delete(@PathVariable Long id) {
+        return trainRecordService.deleteById(id);
+    }
+
+    @PutMapping("/update")
+    public int update(@RequestBody TrainRecord record) {
+        return trainRecordService.updateById(record);
+    }
+
+    @GetMapping("/get/{id}")
+    public TrainRecord get(@PathVariable Long id) {
+        return trainRecordService.getById(id);
+    }
+
+    @GetMapping("/list")
+    public List<TrainRecord> list() {
+        return trainRecordService.getAll();
     }
 }

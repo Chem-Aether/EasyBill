@@ -24,11 +24,6 @@ public class TrainRecord {
     private String seatNo;
     private String seatClass;
     private Integer mileageKm;
-
-    @TableField(fill = FieldFill.INSERT)
-    private LocalDateTime createTime;
-    @TableField(fill = FieldFill.INSERT_UPDATE)
-    private LocalDateTime updateTime;
 }
 
 

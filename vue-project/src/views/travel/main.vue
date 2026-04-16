@@ -70,17 +70,6 @@ function Train(event){
   padding: 0px;
   cursor:default;
 }
-.BodyMain {
-  width: 100%;
-  height: 100%;
-  background-position: center center;
-  background-image: url('@/assets/img/pageBg.png');
-
-  display: flex;
-  flex-direction: column;
-  /* justify-content: center; */
-  align-items: center;
-}
 
 .BodyTable{
   display: flex;

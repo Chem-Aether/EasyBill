@@ -42,8 +42,4 @@ public class FlightRecord {
     private Integer flightDistanceKm;
 
     private String seatNo;
-
-    private LocalDateTime createTime;
-
-    private LocalDateTime updateTime;
 }

@@ -13,7 +13,4 @@ public class FlightRecordService {
     @Autowired
     private FlightRecordMapper flightRecordMapper;
 
-    public List<FlightRecord> findAll() {
-        return flightRecordMapper.selectList(null);
-    }
 }
