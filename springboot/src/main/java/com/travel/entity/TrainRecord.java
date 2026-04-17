@@ -3,6 +3,7 @@ package com.travel.entity;
 import com.baomidou.mybatisplus.annotation.*;
 import lombok.Data;
 import java.time.LocalDateTime;
+import java.util.List;
 
 
 @Data
@@ -24,6 +25,9 @@ public class TrainRecord {
     private String seatNo;
     private String seatClass;
     private Integer mileageKm;
+
+    @TableField(exist = false) // 标注：数据库不存在
+    private List<TrainStationRecord> stationList;
 }
 
 

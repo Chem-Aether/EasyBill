@@ -1,6 +1,5 @@
 package com.sysconfig;
 
-
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
@@ -10,12 +9,12 @@ public class CorsConfig implements WebMvcConfigurer {
 
     @Override
     public void addCorsMappings(CorsRegistry registry) {
-        registry.addMapping("/**") // 允许所有路径
-                .allowedOrigins("http://localhost:5173") // 允许的来源
-                .allowedMethods("GET", "POST", "PUT", "DELETE") // 允许的 HTTP 方法
-                .allowedHeaders("*") // 允许的请求头
-                .exposedHeaders("*") // 允许前端访问的响应头
-                .allowCredentials(true) // 是否允许发送 Cookie
-                .maxAge(3600); // 预检请求的缓存时间
+        registry.addMapping("/**")
+                .allowedOriginPatterns("*")
+                .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
+                .allowedHeaders("*")
+                .exposedHeaders("*")
+                .allowCredentials(true)
+                .maxAge(3600);
     }
 }

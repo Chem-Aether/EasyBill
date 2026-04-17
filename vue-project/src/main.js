@@ -5,7 +5,7 @@ import { createPinia } from 'pinia'
 import App from './App.vue'
 import router from './router'
 import ElementPlus from 'element-plus'
-import Border from '@/views/travel/MainWindow/Border.vue'
+import Border from '@/modules/travel/views/Board/Border.vue'
 
 import 'element-plus/dist/index.css'
 

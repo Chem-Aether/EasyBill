@@ -1,23 +1,30 @@
 package com.travel.controller;
 
 import com.sysconfig.Result;
+import com.travel.dto.TrainRecordQueryDTO;
 import com.travel.entity.TrainRecord;
 import com.travel.service.TrainRecordService;
-import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
-
 @RestController
-@RequestMapping("/travel/train")
-@Tag(name = "交通工具票务管理接口", description = "航班/火车/票务相关接口")
+@RequestMapping("/travel/trainTickets")
+@Tag(name = "火车票管理接口", description = "航班/火车/票务相关接口")
 public class TrainRecordController {
 
     @Autowired
     private TrainRecordService trainRecordService;
+
+    @GetMapping("/list")
+    public Result list(
+            @Parameter(description = "查询条件")
+            TrainRecordQueryDTO dto) {
+        return Result.success(
+                trainRecordService.getTrainWithStationList(dto)
+        );
+    }
 
     @PostMapping("/add")
     public int add(@RequestBody TrainRecord record) {
@@ -39,8 +46,4 @@ public class TrainRecordController {
         return trainRecordService.getById(id);
     }
 
-    @GetMapping("/list")
-    public List<TrainRecord> list() {
-        return trainRecordService.getAll();
-    }
 }

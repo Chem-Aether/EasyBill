@@ -26,8 +26,12 @@ service.interceptors.request.use(
 // =================== 响应拦截器 ===================
 service.interceptors.response.use(
     (response) => {
-        // 2xx 进入这里：直接返回数据
-        return response.data
+        // 如果标记了 fullResponse，直接返回完整对象
+        if (response.config.fullResponse) {
+            return response;
+        }
+        // 其他接口照常返回 data，不动！
+        return response.data;
     },
     (error) => {
         // 非 2xx 进入这里：统一处理全局异常
