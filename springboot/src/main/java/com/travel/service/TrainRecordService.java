@@ -97,11 +97,17 @@ public class TrainRecordService {
 
     // ===================== 根据ID查询 =====================
     public TrainRecord getById(Long id) {
-        return trainRecordMapper.selectById(id);
-    }
+        TrainRecord record = trainRecordMapper.selectById(id);
+        if (record == null) {
+            return null;
+        }
 
-    // ===================== 查询全部 =====================
-    public List<TrainRecord> getAll() {
-        return trainRecordMapper.selectList(null);
+        LambdaQueryWrapper<TrainStationRecord> wrapper = Wrappers.lambdaQuery();
+        wrapper.eq(TrainStationRecord::getTrainId, id);
+        wrapper.orderByAsc(TrainStationRecord::getStationOrder);
+        List<TrainStationRecord> stationList = trainStationRecordMapper.selectList(wrapper);
+
+        record.setStationList(stationList);
+        return record;
     }
 }
