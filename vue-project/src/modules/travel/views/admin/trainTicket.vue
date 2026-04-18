@@ -68,8 +68,10 @@
                 @click="handleDelete(idx)"
               >删除</el-button>
 
-              <el-button v-else size="small" @click="cancelEdit">取消</el-button>
-              <el-button v-else type="primary" size="small" @click="saveEdit(idx)">保存</el-button>
+              <template v-else>
+                <el-button size="small" @click="cancelEdit">取消</el-button>
+                <el-button type="primary" size="small" @click="saveEdit(idx)">保存</el-button>
+              </template>
             </div>
           </div>
 
@@ -151,62 +153,65 @@
               </el-form-item>
             </div>
 
-            <!-- 🔥 原生 Element Plus Timeline 时间轴 -->
+            <!-- 途经站（纯 Element Plus 时间轴 + 无报错） -->
             <div class="station-section">
               <div class="station-header" @click="toggleStation(idx)">
                 <span>途经站 {{ item.stationList.length }} 个</span>
                 <span>{{ expandIdx === idx ? '收起' : '展开' }}</span>
               </div>
 
-              <div v-if="expandIdx === idx" style="margin-top: 10px;">
-                <!-- 编辑模式：可拖拽可编辑 -->
-                <draggable
-                  v-if="editIndex === idx"
-                  v-model="item.stationList"
-                  @end="renumber(item.stationList)"
-                  ghost-class="drag-ghost"
-                  :options="{
-                    handle: '.drag-handle',
-                    filter: 'input,button',
-                    preventOnFilter: true
-                  }"
-                >
-                  <template #item="{ element }">
-                      <div class="station-item" :style="{ background: randColor() }">
-                        <span class="drag-handle" style="cursor:move;margin-right:6px;">☰</span>
-                        <el-autocomplete
-                          v-model="element.stationName"
-                          :fetch-suggestions="queryStation"
-                          placeholder="站点"
-                          style="flex:1"
-                        />
-                        <span style="margin-left:8px;">#{{ element.stationOrder }}</span>
-                        <el-button
-                          type="text"
-                          size="small"
-                          danger
-                          @click="delStation(item.stationList, element)"
-                        >删</el-button>
-                      </div>
-                  </template>
-                </draggable>
-
-                <!-- 查看模式：原生时间轴 -->
-                <el-timeline v-else>
-                  <el-timeline-item
-                    v-for="(st, sidx) in item.stationList"
-                    :key="sidx"
-                    :color="dotColor()"
-                    style="padding: 2px 0;"
+              <div v-if="expandIdx === idx" style="margin-top:10px;">
+                <el-timeline>
+                  <!-- 编辑模式：可拖拽 -->
+                  <draggable
+                    v-if="editIndex === idx"
+                    v-model="item.stationList"
+                    @end="renumber(item.stationList)"
+                    ghost-class="drag-ghost"
+                    :options="{
+                      handle: '.drag-handle',
+                      filter: 'input,button',
+                      preventOnFilter: true
+                    }"
                   >
-                    <div class="station-item" :style="{ background: randColor() }">
-                      {{ st.stationOrder }}. {{ st.stationName }}
-                    </div>
-                  </el-timeline-item>
+                    <template #item="{ element }">
+                      <el-timeline-item :color="dotColor()">
+                        <div class="station-item" :style="{ background: randColor() }">
+                          <span class="drag-handle" style="cursor:move; margin-right:6px;">☰</span>
+                          <el-autocomplete
+                            v-model="element.stationName"
+                            :fetch-suggestions="queryStation"
+                            placeholder="站点"
+                            style="flex:1"
+                          />
+                          <span style="margin-left:8px;">#{{ element.stationOrder }}</span>
+                          <el-button
+                            type="text"
+                            size="small"
+                            danger
+                            @click="delStation(item.stationList, element)"
+                          >删</el-button>
+                        </div>
+                      </el-timeline-item>
+                    </template>
+                  </draggable>
+
+                  <!-- 查看模式 -->
+                  <template v-else>
+                    <el-timeline-item
+                      v-for="(st, sidx) in item.stationList"
+                      :key="sidx"
+                      :color="dotColor()"
+                    >
+                      <div class="station-item" :style="{ background: randColor() }">
+                        {{ st.stationOrder }}. {{ st.stationName }}
+                      </div>
+                    </el-timeline-item>
+                  </template>
                 </el-timeline>
 
                 <!-- 添加 -->
-                <div v-if="editIndex === idx" style="margin-top:8px;display:flex;gap:8px;align-items:center">
+                <div v-if="editIndex === idx" style="margin-top:8px; display:flex; gap:8px; align-items:center">
                   <el-autocomplete
                     v-model="tempStationName"
                     :fetch-suggestions="queryStation"
@@ -286,7 +291,6 @@ const toggleStation = (idx) => {
   expandIdx.value = expandIdx.value === idx ? -1 : idx
 }
 
-// 编辑
 const handleEdit = (item, idx) => {
   editIndex.value = idx
 }
@@ -298,7 +302,6 @@ const saveEdit = (idx) => {
   ElMessage.success('保存成功')
 }
 
-// 新增
 const handleAdd = () => {
   const newItem = {
     trainNo: '',
@@ -319,7 +322,6 @@ const handleAdd = () => {
   editIndex.value = 0
 }
 
-// 途经站
 const renumber = (list) => {
   list.forEach((s, i) => s.stationOrder = i + 1)
 }
@@ -340,7 +342,6 @@ const delStation = (list, el) => {
   renumber(list)
 }
 
-// 删除
 const handleDelete = (idx) => {
   ElMessageBox.confirm('确定删除？').then(() => {
     trainList.value.splice(idxStart.value + idx, 1)
@@ -355,7 +356,6 @@ const handleRefresh = async () => {
 const doQuery = () => {}
 const resetQuery = () => Object.assign(queryForm, { trainNo: '', startStation: '', endStation: '' })
 
-// 随机颜色
 const randColor = () => {
   const cs = ['#e6f7ff', '#f0f9ff', '#e6fffb', '#f0f2f5', '#fff7e6', '#f9f0ff']
   return cs[Math.floor(Math.random() * cs.length)]
@@ -367,66 +367,18 @@ const dotColor = () => {
 </script>
 
 <style scoped>
-.train-manage-page {
-  width: 96%;
-  margin: 20px auto;
-}
-.page-title {
-  font-size: 22px;
-  font-weight: bold;
-  margin-bottom: 15px;
-}
-.query-card {
-  margin-bottom: 15px;
-}
-.tool-bar {
-  margin-bottom: 15px;
-}
-.card-list {
-  display: flex;
-  flex-direction: column;
-  gap: 15px;
-}
-.train-card {
-  width: 100%;
-}
-.train-card.editing {
-  border: 2px solid #1890ff;
-  border-radius: 8px;
-}
-.card-header {
-  display: flex;
-  justify-content: space-between;
-  font-weight: 600;
-}
-.grid-form {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
-}
-.station-section {
-  margin-top: 10px;
-}
-.station-header {
-  display: flex;
-  justify-content: space-between;
-  cursor: pointer;
-  padding: 5px 0;
-  font-weight: 500;
-}
-.station-item {
-  display: flex;
-  align-items: center;
-  padding: 6px 10px;
-  border-radius: 4px;
-  margin: 4px 0;
-}
-.drag-ghost {
-  opacity: 0.5;
-  background: #f0f0f0;
-}
-.empty-tip {
-  padding: 40px 0;
-  text-align: center;
-}
+.train-manage-page { width: 96%; margin: 20px auto; }
+.page-title { font-size: 22px; font-weight: bold; margin-bottom: 15px; }
+.query-card { margin-bottom: 15px; }
+.tool-bar { margin-bottom: 15px; }
+.card-list { display: flex; flex-direction: column; gap: 15px; }
+.train-card { width: 100%; }
+.train-card.editing { border: 2px solid #1890ff; border-radius: 8px; }
+.card-header { display: flex; justify-content: space-between; font-weight: 600; }
+.grid-form { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.station-section { margin-top: 10px; }
+.station-header { display: flex; justify-content: space-between; cursor: pointer; padding: 5px 0; font-weight: 500; }
+.station-item { display: flex; align-items: center; padding: 6px 10px; border-radius: 4px; margin: 4px 0; }
+.drag-ghost { opacity: 0.5; background: #f0f0f0; }
+.empty-tip { padding: 40px 0; text-align: center; }
 </style>
