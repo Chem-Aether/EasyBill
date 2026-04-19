@@ -5,13 +5,11 @@ import com.travel.entity.FlightRecord;
 import com.travel.mapper.FlightRecordMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 
 import org.springframework.util.StringUtils;
-import java.util.List;
 
 @Service
 public class FlightRecordService {
@@ -58,18 +56,6 @@ public class FlightRecordService {
     }
 
     /**
-     * 批量新增
-     */
-    @Transactional(rollbackFor = Exception.class)
-    public boolean saveBatch(List<FlightRecord> list) {
-        // MyBatis-Plus 批量插入
-        for (FlightRecord record : list) {
-            flightRecordMapper.insert(record);
-        }
-        return true;
-    }
-    
-    /**
      * 根据ID修改
      */
     public boolean updateById(FlightRecord flightRecord) {
@@ -80,6 +66,10 @@ public class FlightRecordService {
      * 根据ID删除
      */
     public boolean removeById(Long id) {
+        FlightRecord record = flightRecordMapper.selectById(id);
+        if (record == null) {
+            return false;
+        }
         return flightRecordMapper.deleteById(id) > 0;
     }
 }

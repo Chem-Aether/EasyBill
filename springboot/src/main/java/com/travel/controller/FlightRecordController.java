@@ -8,7 +8,6 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
 
 @RestController
 @RequestMapping("/travel/flightTickets")
@@ -31,12 +30,6 @@ public class FlightRecordController {
         return Result.success(flightRecordService.save(flightRecord));
     }
 
-    // 批量新增
-    @PostMapping("/insertBatch")
-    public Result saveBatch(@RequestBody List<FlightRecord> list) {
-        return Result.success(flightRecordService.saveBatch(list));
-    }
-
     // 修改
     @PutMapping("/update")
     public Result update(@RequestBody FlightRecord flightRecord) {
@@ -44,8 +37,12 @@ public class FlightRecordController {
     }
 
     // 删除
-    @DeleteMapping("/{id}")
+    @DeleteMapping("/delete/{id}")
     public Result remove(@PathVariable Long id) {
-        return Result.success(flightRecordService.removeById(id));
+        if (id == null || id <= 0) {
+            return Result.error("ID不能为空");
+        }
+        boolean success = flightRecordService.removeById(id);
+        return success ? Result.success("删除成功") : Result.error("删除失败");
     }
 }

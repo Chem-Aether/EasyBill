@@ -4,7 +4,7 @@ USE `springdatabase`;
 -- 航线表
 CREATE TABLE `flight` (
                           `flight_id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '航线记录ID',
-                          `user_id` BIGINT UNSIGNED NOT NULL COMMENT '所属用户ID',
+                          `user_id` BIGINT UNSIGNED DEFAULT 1 NOT NULL COMMENT '所属用户ID',
                           `flight_no` VARCHAR(20) NOT NULL COMMENT '航班号',
                           `company` VARCHAR(50) NOT NULL COMMENT '航空公司',
                           `aircraft_reg` VARCHAR(10) NOT NULL COMMENT '飞机注册号',
@@ -38,7 +38,7 @@ CREATE TABLE `flight` (
 -- 铁路表
 CREATE TABLE `train` (
                          `train_id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '铁路记录ID',
-                         `user_id` BIGINT UNSIGNED NOT NULL COMMENT '所属用户ID',
+                         `user_id` BIGINT UNSIGNED DEFAULT 1 NOT NULL COMMENT '所属用户ID',
 
                          `train_no` VARCHAR(20) NOT NULL COMMENT '车次',
                          `train_type` VARCHAR(20) NOT NULL COMMENT '列车类型',
@@ -65,7 +65,7 @@ CREATE TABLE `train` (
 CREATE TABLE `train_station` (
                                  `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
                                  `train_id` BIGINT NOT NULL COMMENT '关联铁路表车次ID',
-                                 `user_id` BIGINT UNSIGNED NOT NULL COMMENT '所属用户ID',
+                                 `user_id` BIGINT UNSIGNED DEFAULT 1 NOT NULL COMMENT '所属用户ID',
                                  `station_name` VARCHAR(50) NOT NULL COMMENT '车站名称',
                                  `station_order` INT NOT NULL COMMENT '车站顺序',
                                  `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -81,7 +81,7 @@ CREATE TABLE `train_station` (
 -- 足迹地点表
 CREATE TABLE `foot_spot` (
                              `spot_id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '足迹ID',
-                             `user_id` BIGINT UNSIGNED NOT NULL COMMENT '用户ID',
+                             `user_id` BIGINT UNSIGNED DEFAULT 1 NOT NULL COMMENT '用户ID',
                              `adcode` CHAR(6) NOT NULL COMMENT '行政区划代码',
                              `spot_name` VARCHAR(100) NOT NULL COMMENT '景点名称',
                              `spot_type` VARCHAR(20) NOT NULL COMMENT '类型',

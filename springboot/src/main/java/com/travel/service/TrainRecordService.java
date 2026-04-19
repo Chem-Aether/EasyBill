@@ -74,10 +74,6 @@ public class TrainRecordService {
         Map<Long, List<TrainStationRecord>> stationMap = stationList.stream()
                 .collect(Collectors.groupingBy(TrainStationRecord::getTrainId));
 
-        // 设置站点
-        for (TrainRecord record : trainList) {
-            record.setStationList(stationMap.getOrDefault(record.getTrainId(), new ArrayList<>()));
-        }
     }
 
     // ===================== 新增 =====================
@@ -107,7 +103,6 @@ public class TrainRecordService {
         wrapper.orderByAsc(TrainStationRecord::getStationOrder);
         List<TrainStationRecord> stationList = trainStationRecordMapper.selectList(wrapper);
 
-        record.setStationList(stationList);
         return record;
     }
 }

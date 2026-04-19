@@ -388,5 +388,4 @@ const getColorByIndex = (index) => {
 .station-header { display: flex; justify-content: space-between; cursor: pointer; padding: 5px 0; font-weight: 500; }
 .station-item { display: flex; align-items: center; padding: 6px 10px; border-radius: 4px; margin: 4px 0; }
 .empty-tip { padding: 40px 0; text-align: center; }
-.drag-ghost { opacity: 0.4; background: #eee; }
 </style>

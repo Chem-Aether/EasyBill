@@ -49,7 +49,6 @@
               {{ editIndex === idx ? '编辑航班' : `第 ${idxStart + idx + 1} 条` }}
             </span>
             <div>
-              <!-- 🔥 修复正确的按钮结构 -->
               <template v-if="editIndex !== idx">
                 <el-button
                     type="primary"
@@ -61,7 +60,7 @@
                     type="danger"
                     link
                     size="small"
-                    @click="handleDelete(idx)"
+                    @click="handleDelete(item, idx)"
                 >删除</el-button>
               </template>
               <template v-else>
@@ -81,12 +80,33 @@
               <el-form-item label="航班号">
                 <el-input v-model="item.flightNo" :disabled="editIndex !== idx" />
               </el-form-item>
+              <el-form-item label="航空公司">
+                <el-input v-model="item.company" :disabled="editIndex !== idx" />
+              </el-form-item>
+              <el-form-item label="座位号">
+                <el-input v-model="item.seatNo" :disabled="editIndex !== idx" />
+              </el-form-item>
+              <el-form-item>
+
+              </el-form-item>
               <el-form-item label="机号">
                 <el-input v-model="item.aircraftReg" :disabled="editIndex !== idx" />
               </el-form-item>
               <el-form-item label="机型">
                 <el-input v-model="item.aircraftType" :disabled="editIndex !== idx" />
               </el-form-item>
+              <el-form-item label="飞行距离(km)">
+                <el-input v-model.number="item.flightDistanceKm" :disabled="editIndex !== idx" />
+              </el-form-item>
+              <el-form-item label="经停机场">
+                <el-autocomplete
+                    v-model="item.stopoverAirport"
+                    :fetch-suggestions="queryAirport"
+                    :disabled="editIndex !== idx"
+                    placeholder="无则不填"
+                />
+              </el-form-item>
+
 
               <el-form-item label="起飞机场">
                 <el-autocomplete
@@ -95,13 +115,9 @@
                     :disabled="editIndex !== idx"
                 />
               </el-form-item>
-              <el-form-item label="出发航站楼">
+              <el-form-item label="起飞机场航站楼">
                 <el-input v-model="item.departureTerminal" :disabled="editIndex !== idx" />
               </el-form-item>
-              <el-form-item label="出发ICAO">
-                <el-input v-model="item.departureIcao" :disabled="editIndex !== idx" />
-              </el-form-item>
-
               <el-form-item label="起飞时间">
                 <el-date-picker
                     v-model="item.takeoffTime"
@@ -120,9 +136,6 @@
                   <el-option label="摆渡车" value="摆渡车"/>
                 </el-select>
               </el-form-item>
-              <el-form-item label="飞行距离(km)">
-                <el-input v-model.number="item.flightDistanceKm" :disabled="editIndex !== idx" />
-              </el-form-item>
 
               <el-form-item label="到达机场">
                 <el-autocomplete
@@ -131,14 +144,10 @@
                     :disabled="editIndex !== idx"
                 />
               </el-form-item>
-              <el-form-item label="到达航站楼">
+              <el-form-item label="到达机场航站楼">
                 <el-input v-model="item.arrivalTerminal" :disabled="editIndex !== idx" />
               </el-form-item>
-              <el-form-item label="到达ICAO">
-                <el-input v-model="item.arrivalIcao" :disabled="editIndex !== idx" />
-              </el-form-item>
-
-              <el-form-item label="落地时间">
+              <el-form-item label="达到时间">
                 <el-date-picker
                     v-model="item.landingTime"
                     type="datetime"
@@ -146,17 +155,23 @@
                     style="width:100%"
                 />
               </el-form-item>
-              <el-form-item label="经停机场">
-                <el-autocomplete
-                    v-model="item.stopoverAirport"
-                    :fetch-suggestions="queryAirport"
+              <el-form-item label="下机方式">
+                <el-select
+                    v-model="item.deplaningMethod"
                     :disabled="editIndex !== idx"
-                    placeholder="无则不填"
-                />
+                    style="width:100%"
+                >
+                  <el-option label="廊桥" value="廊桥"/>
+                  <el-option label="摆渡车" value="摆渡车"/>
+                </el-select>
               </el-form-item>
-              <el-form-item label="座位号">
-                <el-input v-model="item.seatNo" :disabled="editIndex !== idx" />
-              </el-form-item>
+
+<!--              <el-form-item label="起飞机场ICAO">-->
+<!--                <el-input v-model="item.departureIcao" :disabled="editIndex !== idx" />-->
+<!--              </el-form-item>-->
+<!--              <el-form-item label="到达机场ICAO">-->
+<!--                <el-input v-model="item.arrivalIcao" :disabled="editIndex !== idx" />-->
+<!--              </el-form-item>-->
             </div>
           </el-form>
         </el-card>
@@ -177,7 +192,7 @@
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { getFlightList } from '@/modules/travel/apis/flightTickets.js'
+import { getFlightList, deleteFlightTicketById, insertFlightTicket, updateFlightTicketById } from '@/modules/travel/apis/flightTickets.js'
 
 // ===================== 机场列表 =====================
 const airportList = [
@@ -240,42 +255,81 @@ const idxStart = computed(() => (currentPage.value - 1) * pageSize.value)
 
 // ===================== 编辑 / 新增 统一逻辑 =====================
 const editIndex = ref(-1)
-
+const editBackup = ref(null)
 // 进入编辑
 const handleEdit = (item, idx) => {
   editIndex.value = idx
+  editBackup.value = { ...item }
 }
 
 // 取消
 const cancelEdit = () => {
+  if (editIndex.value !== -1 && editBackup.value) {
+    flightList.value[editIndex.value] = { ...editBackup.value }
+  }
   editIndex.value = -1
+  editBackup.value = null
 }
 
 // 保存
-const saveEdit = (idx) => {
-  editIndex.value = -1
-  ElMessage.success('保存成功')
+const saveEdit = async (idx) => {
+  // 拿到当前这一行数据
+  const item = flightList.value[idx]
+
+  try {
+    // 修改已有数据
+    if (item.flightId) {
+      const updatedData = {}
+      for (const key in item) {
+        if (item[key] !== editBackup.value[key]) {
+          updatedData[key] = item[key]
+        }
+      }
+      updatedData.flightId = item.flightId
+      await updateFlightTicketById(updatedData)
+      ElMessage.success('修改成功')
+    }
+
+    // 新增数据
+    else {
+      const res = await insertFlightTicket(item)
+      // 把后端返回的 id 覆盖到前端数据上
+      flightList.value[idx] = res.data
+      ElMessage.success('新增成功')
+    }
+
+    // 退出编辑状态
+    editIndex.value = -1
+  } catch (err) {
+    ElMessage.error('保存失败：' + (err.message || '服务异常'))
+  }
 }
 
 // 新增 = 推入空数据
 const handleAdd = () => {
   const newItem = {
-    flightNo: '', aircraftReg: '', aircraftType: '',
+    flightNo: '', aircraftReg: '', aircraftType: '', company: '',
     departureAirport: '', departureTerminal: '', departureIcao: '',
     takeoffTime: '', boardingMethod: '廊桥', flightDistanceKm: 0,
     arrivalAirport: '', arrivalTerminal: '', arrivalIcao: '',
-    landingTime: '', stopoverAirport: '', seatNo: ''
+    landingTime: '', stopoverAirport: '', seatNo: '', deplaningMethod:'',
   }
   flightList.value.unshift(newItem)
   editIndex.value = 0
 }
 
 // ===================== 删除 =====================
-const handleDelete = (idx) => {
-  ElMessageBox.confirm('确定删除该航班？', '提示').then(() => {
-    flightList.value.splice(idxStart.value + idx, 1)
+const handleDelete = async (item, idx) => {
+  try {
+    await ElMessageBox.confirm('确定删除？')
+    await deleteFlightTicketById(item.flightId)
+
+    flightList.value.splice(idx, 1)
     ElMessage.success('删除成功')
-  }).catch(() => {})
+
+  } catch (err) {
+    ElMessage.info('取消或失败')
+  }
 }
 
 // ===================== 刷新 =====================
@@ -321,7 +375,7 @@ const refresh = async () => {
 }
 .grid-form {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 8px;
 }
 </style>
