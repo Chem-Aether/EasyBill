@@ -6,3 +6,10 @@ export const getTrainStationAll = (params = {}) => {
         method: 'GET',
     })
 }
+
+export const getAirportAll = () => {
+    return request({
+        url: '/sys/support/Airports/all',
+        method: 'GET'
+    })
+}

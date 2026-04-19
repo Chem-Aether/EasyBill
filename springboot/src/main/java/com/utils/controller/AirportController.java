@@ -1,7 +1,7 @@
 package com.utils.controller;
 
 import com.sysconfig.Result;
-import com.utils.service.TrainStationService;
+import com.utils.service.AirportService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -10,23 +10,22 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-
 @RestController
-@RequestMapping("/sys/support/TrainStations")
+@RequestMapping("/sys/support/Airports")
 @Tag(name = "系统资源接口接口", description = "提供固定的系统资源表")
 @RequiredArgsConstructor
-public class TrainStationController {
+public class AirportController {
 
-    private final TrainStationService trainStationService;
+    private final AirportService airportService;
 
     @GetMapping("/all")
-    @Operation(summary = "查询所有支持的铁路车站")
-    public Result getAllStations() {
-        return Result.success(trainStationService.getAllStations());
+    @Operation(summary = "查询所有支持的机场")
+    public Result getAllAirports() {
+        return Result.success(airportService.getAllAirports());
     }
 
     @GetMapping("/search")
     public Result search(@RequestParam String keyword) {
-        return Result.success(trainStationService.search(keyword));
+        return Result.success(airportService.search(keyword));
     }
 }

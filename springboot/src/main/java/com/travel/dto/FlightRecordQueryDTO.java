@@ -16,6 +16,8 @@ public class FlightRecordQueryDTO {
     private String aircraftType;
     private String departureAirport;
     private String arrivalAirport;
+    private String departureIcao;
+    private String arrivalIcao;
     private String stopoverAirport;
     private LocalDateTime takeoffTimeStart;
     private LocalDateTime takeoffTimeEnd;

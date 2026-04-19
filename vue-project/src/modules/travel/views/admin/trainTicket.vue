@@ -22,6 +22,17 @@
               placeholder="到站"
           />
         </el-form-item>
+
+        <el-form-item label="发车时间">
+          <el-date-picker
+              v-model="queryForm.departureTimeRange"
+              type="datetimerange"
+              range-separator="至"
+              start-placeholder="开始时间"
+              end-placeholder="结束时间"
+              style="width: 360px"
+          />
+        </el-form-item>
         <el-form-item>
           <el-button type="primary" @click="doQuery">查询</el-button>
           <el-button @click="resetQuery">重置</el-button>
@@ -155,7 +166,9 @@
             <!-- 途经站 -->
             <div class="station-section">
               <div class="station-header" @click="toggleStation(idx)">
-                <span>途经站：{{ (item.stationList || []).length }} 个</span>
+                <span>
+                  途经站：{{ (item.stationCount ?? (item.stationList || []).length) }} 个
+                </span>
                 <span>{{ expandIdx === idx ? '收起' : '展开' }}</span>
               </div>
 
@@ -234,9 +247,11 @@
     <el-pagination
         v-model:current-page="currentPage"
         v-model:page-size="pageSize"
-        :total="filteredList.length"
+  :total="pageInfo.total || 0"
         layout="total,prev,pager,next,jumper"
         style="margin-top:20px;text-align:center"
+  @current-change="loadData"
+  @size-change="() => { currentPage.value = 1; loadData() }"
     />
   </div>
 </template>
@@ -245,12 +260,21 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import draggable from 'vuedraggable'
-import { getTrainList } from '@/modules/travel/apis/trainTickets.js'
+import {
+  getTrainList,
+  addTrainTicket,
+  updateTrainTicket,
+  deleteTrainTicket,
+  getTrainStationsByTrainId
+} from '@/modules/travel/apis/trainTickets.js'
 import { useTrainStationStore } from '@/modules/travel/stores/allTrainStationsList.js'
 
 const stationStore = useTrainStationStore()
 const loading = ref(true)
 const trainList = ref([])
+
+// 后端分页信息（total/size/current/records...）
+const pageInfo = ref({ total: 0 })
 
 const currentPage = ref(1)
 const pageSize = ref(10)
@@ -258,7 +282,16 @@ const expandIdx = ref(-1)
 const editIndex = ref(-1)
 const tempStationName = ref('')
 
-const queryForm = reactive({ trainNo: '', startStation: '', endStation: '' })
+// 备份编辑前的数据，用于取消编辑时回滚
+const editBackup = ref(null)
+
+const queryForm = reactive({
+  trainNo: '',
+  startStation: '',
+  endStation: '',
+  // [start, end]
+  departureTimeRange: null
+})
 
 onMounted(async () => {
   await stationStore.initTrainStations()
@@ -267,11 +300,38 @@ onMounted(async () => {
 
 const loadData = async () => {
   loading.value = true
-  const res = await getTrainList()
+
+  // 后端 DTO 是 LocalDateTime，避免传 ISO 字符串(带 Z)导致 400
+  const toLocalDateTimeParam = (v) => {
+    if (!v) return null
+    const d = (v instanceof Date) ? v : new Date(v)
+    if (Number.isNaN(d.getTime())) return null
+
+    const pad = (n) => String(n).padStart(2, '0')
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
+  }
+
+  const departureDatetimeStart = Array.isArray(queryForm.departureTimeRange)
+    ? toLocalDateTimeParam(queryForm.departureTimeRange[0])
+    : null
+  const departureDatetimeEnd = Array.isArray(queryForm.departureTimeRange)
+    ? toLocalDateTimeParam(queryForm.departureTimeRange[1])
+    : null
+
+  const res = await getTrainList({
+    pageNum: currentPage.value,
+    pageSize: pageSize.value,
+    trainNo: queryForm.trainNo,
+    startStation: queryForm.startStation,
+    endStation: queryForm.endStation,
+    departureDatetimeStart,
+    departureDatetimeEnd
+  })
   trainList.value = (res.data || []).map(i => {
     i.stationList = i.stationList || []
     return i
   })
+  pageInfo.value = res.page || { total: (res.data || []).length }
   loading.value = false
 }
 
@@ -283,29 +343,113 @@ const queryStation = (q, cb) => {
 }
 
 const filteredList = computed(() => trainList.value)
-const pageData = computed(() => {
-  const s = (currentPage.value - 1) * pageSize.value
-  return filteredList.value.slice(s, s + pageSize.value)
-})
-const idxStart = computed(() => (currentPage.value - 1) * pageSize.value)
+// 后端分页：当前页数据就是 trainList
+const pageData = computed(() => filteredList.value)
+// 后端分页：页内索引直接用 idx，不需要偏移
+const idxStart = computed(() => 0)
 
-const toggleStation = (idx) => {
-  expandIdx.value = expandIdx.value === idx ? -1 : idx
+const toggleStation = async (idx) => {
+  const next = expandIdx.value === idx ? -1 : idx
+  expandIdx.value = next
+
+  // 收起直接返回
+  if (next === -1) return
+
+  const globalIndex = idxStart.value + idx
+  const item = trainList.value[globalIndex]
+  if (!item) return
+
+  // 新增未保存：只展开本地列表
+  if (!item.trainId) {
+    item.stationList = item.stationList || []
+    return
+  }
+
+  // 已经加载过明细且包含 id，就不重复请求
+  if (Array.isArray(item.stationList) && item.stationList.length > 0 && item.stationList[0]?.id) {
+    return
+  }
+
+  try {
+    const res = await getTrainStationsByTrainId(item.trainId)
+    item.stationList = (res?.data || res || [])
+      .slice()
+      .sort((a, b) => (a.stationOrder || 0) - (b.stationOrder || 0))
+  } catch (e) {
+    ElMessage.error('加载途经站失败')
+  }
 }
 
 const handleEdit = (item, idx) => {
   editIndex.value = idx
+  editBackup.value = JSON.parse(JSON.stringify(item))
 }
 const cancelEdit = () => {
+  if (editIndex.value !== -1 && editBackup.value) {
+    const globalIndex = idxStart.value + editIndex.value
+    trainList.value.splice(globalIndex, 1, editBackup.value)
+  }
   editIndex.value = -1
+  editBackup.value = null
 }
-const saveEdit = (idx) => {
-  editIndex.value = -1
-  ElMessage.success('保存成功')
+const saveEdit = async (idx) => {
+  const globalIndex = idxStart.value + idx
+  const item = trainList.value[globalIndex]
+  if (!item) return
+
+  // 无变更：直接退出编辑，不请求后端
+  if (editBackup.value) {
+    const now = JSON.stringify(item)
+    const old = JSON.stringify(editBackup.value)
+    if (now === old) {
+      editIndex.value = -1
+      editBackup.value = null
+      ElMessage.info('未检测到变更，无需保存')
+      return
+    }
+  }
+
+  // 二次确认
+  try {
+    await ElMessageBox.confirm('确认提交保存当前修改？', '提示', {
+      confirmButtonText: '确认',
+      cancelButtonText: '取消',
+      type: 'warning'
+    })
+  } catch (e) {
+    // 用户取消
+    return
+  }
+
+  try {
+    const stations = (item.stationList || []).map(s => ({
+      id: s.id,
+      trainId: item.trainId,
+      userId: item.userId,
+      stationName: s.stationName,
+      stationOrder: s.stationOrder
+    }))
+
+    if (item.trainId) {
+      await updateTrainTicket({ ticket: item, stations })
+    } else {
+      const res = await addTrainTicket({ ticket: item, stations })
+      const newId = res?.data ?? res
+      if (newId) item.trainId = newId
+    }
+
+    editIndex.value = -1
+    editBackup.value = null
+    ElMessage.success('保存成功')
+    await loadData()
+  } catch (e) {
+    ElMessage.error('保存失败')
+  }
 }
 
 const handleAdd = () => {
   const newItem = {
+    trainId: null,
     trainNo: '',
     trainType: '',
     trainModel: '',
@@ -322,6 +466,7 @@ const handleAdd = () => {
   }
   trainList.value.unshift(newItem)
   editIndex.value = 0
+  editBackup.value = JSON.parse(JSON.stringify(newItem))
 }
 
 const renumber = (list) => {
@@ -346,8 +491,23 @@ const delStation = (list, el) => {
 
 const handleDelete = (idx) => {
   ElMessageBox.confirm('确定删除？').then(() => {
-    trainList.value.splice(idxStart.value + idx, 1)
-    ElMessage.success('删除成功')
+    const globalIndex = idxStart.value + idx
+    const item = trainList.value[globalIndex]
+    if (!item) return
+
+    // 未保存的新记录：直接本地删除
+    if (!item.trainId) {
+      trainList.value.splice(globalIndex, 1)
+      ElMessage.success('删除成功')
+      return
+    }
+
+    deleteTrainTicket(item.trainId).then(() => {
+      trainList.value.splice(globalIndex, 1)
+      ElMessage.success('删除成功')
+    }).catch(() => {
+      ElMessage.error('删除失败')
+    })
   }).catch(() => {})
 }
 
@@ -355,7 +515,10 @@ const handleRefresh = async () => {
   await loadData()
   ElMessage.success('刷新成功')
 }
-const doQuery = () => {}
+const doQuery = async () => {
+  currentPage.value = 1
+  await loadData()
+}
 const resetQuery = () => Object.assign(queryForm, { trainNo: '', startStation: '', endStation: '' })
 
 // 10色循环

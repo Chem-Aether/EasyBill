@@ -18,16 +18,39 @@ public class TrainStationRouterService extends ServiceImpl<TrainStationRecordMap
                 .orderByAsc(TrainStationRecord::getStationOrder));
     }
 
-    @Transactional
-    public void saveBatch(Long trainId, List<TrainStationRecord> list) {
+    public void removeByTrainId(Long trainId) {
+        if (trainId == null) return;
         remove(Wrappers.lambdaQuery(TrainStationRecord.class).eq(TrainStationRecord::getTrainId, trainId));
+    }
+
+    @Transactional
+    public void saveBatch(Long trainId, Long userId, List<TrainStationRecord> list) {
+        removeByTrainId(trainId);
 
         if (list == null || list.isEmpty()) return;
 
         for (int i = 0; i < list.size(); i++) {
             TrainStationRecord st = list.get(i);
             st.setTrainId(trainId);
-            st.setStationOrder(i);
+            if (st.getUserId() == null) {
+                st.setUserId(userId);
+            }
+            st.setStationOrder(i + 1);
+        }
+        saveBatch(list);
+    }
+
+    @Transactional
+    public void saveBatch(Long trainId, List<TrainStationRecord> list) {
+    // 兼容旧调用：不传 userId 时仅设置 trainId + stationOrder
+    removeByTrainId(trainId);
+
+        if (list == null || list.isEmpty()) return;
+
+        for (int i = 0; i < list.size(); i++) {
+            TrainStationRecord st = list.get(i);
+            st.setTrainId(trainId);
+            st.setStationOrder(i + 1);
         }
         saveBatch(list);
     }

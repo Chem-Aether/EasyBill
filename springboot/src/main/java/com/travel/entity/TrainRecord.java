@@ -1,9 +1,9 @@
 package com.travel.entity;
 
 import com.baomidou.mybatisplus.annotation.*;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
 import java.time.LocalDateTime;
-import java.util.List;
 
 
 @Data
@@ -27,6 +27,7 @@ public class TrainRecord {
     private Integer mileageKm;                  // 总里程
 
     @TableField(exist = false)
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
     private Integer stationCount;               // 途径站数目
 }
 

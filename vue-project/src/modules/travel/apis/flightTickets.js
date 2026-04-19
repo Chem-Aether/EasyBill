@@ -12,13 +12,24 @@ export const getFlightList = (params = {}) => {
 
             // 查询条件
             flightNo: params.flightNo,
-            departureAirport: params.departureAirport,
-            arrivalAirport: params.arrivalAirport,
+            // 用 ICAO 做查询条件（与表结构一致）
+            departureIcao: params.departureIcao,
+            arrivalIcao: params.arrivalIcao,
 
             // 时间范围
-            departureDatetimeStart: params.departureDatetimeStart,
-            departureDatetimeEnd: params.departureDatetimeEnd
+            // 后端 DTO: takeoffTimeStart/takeoffTimeEnd
+            takeoffTimeStart: params.takeoffTimeStart ?? params.departureDatetimeStart,
+            takeoffTimeEnd: params.takeoffTimeEnd ?? params.departureDatetimeEnd
         }
+    }).then(res => {
+    // 永远分页：后端应返回 Result{ data: IPage{ records, total, ... } }
+    const payload = (res && Object.prototype.hasOwnProperty.call(res, 'data')) ? res.data : res
+
+    if (payload && Array.isArray(payload.records)) {
+        return { data: payload.records, page: payload }
+    }
+
+    return { data: [], page: { total: 0, records: [] } }
     })
 }
 
@@ -29,6 +40,7 @@ const flightTicketFields = (params) => ({
     aircraftReg: params.aircraftReg,
     aircraftType: params.aircraftType,
 
+    // 表字段：中文名 + ICAO
     departureAirport: params.departureAirport,
     departureTerminal: params.departureTerminal,
     departureIcao: params.departureIcao,
@@ -41,6 +53,7 @@ const flightTicketFields = (params) => ({
     landingTime: params.landingTime,
     deplaningMethod: params.deplaningMethod,
 
+    // 表字段：经停机场只存中文
     stopoverAirport: params.stopoverAirport,
     flightDistanceKm: params.flightDistanceKm,
     seatNo: params.seatNo

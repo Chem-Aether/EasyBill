@@ -24,12 +24,18 @@ public class FlightRecordService {
         LambdaQueryWrapper<FlightRecord> wrapper = Wrappers.lambdaQuery();
 
         // 多条件动态拼接
-        wrapper.eq(StringUtils.hasText(dto.getFlightNo()), FlightRecord::getFlightNo, dto.getFlightNo());
-        wrapper.eq(StringUtils.hasText(dto.getAircraftReg()), FlightRecord::getAircraftReg, dto.getAircraftReg());
-        wrapper.eq(StringUtils.hasText(dto.getAircraftType()), FlightRecord::getAircraftType, dto.getAircraftType());
-        wrapper.eq(StringUtils.hasText(dto.getDepartureAirport()), FlightRecord::getDepartureAirport, dto.getDepartureAirport());
-        wrapper.eq(StringUtils.hasText(dto.getArrivalAirport()), FlightRecord::getArrivalAirport, dto.getArrivalAirport());
-        wrapper.eq(StringUtils.hasText(dto.getStopoverAirport()), FlightRecord::getStopoverAirport, dto.getStopoverAirport());
+    // 管理页更常用“包含匹配”，提升搜索体验
+    wrapper.like(StringUtils.hasText(dto.getFlightNo()), FlightRecord::getFlightNo, dto.getFlightNo());
+    wrapper.like(StringUtils.hasText(dto.getAircraftReg()), FlightRecord::getAircraftReg, dto.getAircraftReg());
+    wrapper.like(StringUtils.hasText(dto.getAircraftType()), FlightRecord::getAircraftType, dto.getAircraftType());
+    // 优先用 ICAO 查询（你现在前端查询传的是 ICAO）
+    wrapper.like(StringUtils.hasText(dto.getDepartureIcao()), FlightRecord::getDepartureIcao, dto.getDepartureIcao());
+    wrapper.like(StringUtils.hasText(dto.getArrivalIcao()), FlightRecord::getArrivalIcao, dto.getArrivalIcao());
+
+    // 兼容：仍支持按中文机场名模糊查
+    wrapper.like(StringUtils.hasText(dto.getDepartureAirport()), FlightRecord::getDepartureAirport, dto.getDepartureAirport());
+    wrapper.like(StringUtils.hasText(dto.getArrivalAirport()), FlightRecord::getArrivalAirport, dto.getArrivalAirport());
+    wrapper.like(StringUtils.hasText(dto.getStopoverAirport()), FlightRecord::getStopoverAirport, dto.getStopoverAirport());
 
         // 起飞时间范围
         wrapper.ge(dto.getTakeoffTimeStart() != null, FlightRecord::getTakeoffTime, dto.getTakeoffTimeStart());
@@ -38,14 +44,13 @@ public class FlightRecordService {
         // 排序（按起飞时间倒序）
         wrapper.orderByDesc(FlightRecord::getTakeoffTime);
 
-        // 是否分页
-        if (dto.getPageNum() != null && dto.getPageSize() != null) {
-            Page<FlightRecord> page = new Page<>(dto.getPageNum(), dto.getPageSize());
-            return flightRecordMapper.selectPage(page, wrapper);
-        }
+    // 永远分页：不传分页参数则使用默认值，避免全量查询
+    long pageNum = (dto.getPageNum() == null || dto.getPageNum() < 1) ? 1L : dto.getPageNum().longValue();
+    long pageSize = (dto.getPageSize() == null || dto.getPageSize() < 1) ? 10L : dto.getPageSize().longValue();
+    pageSize = Math.min(pageSize, 100L);
 
-        // 不分页，返回全部
-        return flightRecordMapper.selectList(wrapper);
+    Page<FlightRecord> page = new Page<>(pageNum, pageSize);
+    return flightRecordMapper.selectPage(page, wrapper);
     }
 
     /**
