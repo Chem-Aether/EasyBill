@@ -1,329 +1,522 @@
 <template>
-  <div class="map" v-if="showCityList">
-    <button class="Up" @click="Up">上一级</button>
-    <div ref="charts" style="width: 100%;height:570px;padding-top: 10px;box-sizing: border-box;"></div>
+  <div class="map-shell">
+    <div ref="mapContainer" class="map-canvas"></div>
+    <div class="map-legend">
+      <span><i class="legend-swatch explored"></i>已探索城市</span>
+      <span v-if="mapType === 'flight'"><i class="legend-swatch flight"></i>航线记录</span>
+      <span v-if="mapType === 'train'"><i class="legend-swatch train"></i>铁路记录</span>
+    </div>
   </div>
-
 </template>
 
 <script setup>
-import { ref, onMounted ,watch} from 'vue';
-import * as echarts from 'echarts';
-import {getVisitedCities} from '@/modules/travel/apis/travel.js'
-import data from '@/assets/中国_市.json'
+import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { storeToRefs } from 'pinia'
+import * as maplibregl from 'maplibre-gl'
+import { Protocol } from 'pmtiles'
+import 'maplibre-gl/dist/maplibre-gl.css'
+import cityGeoJson from '@/assets/中国_市.json'
+import { getFootprints, getTicketData, getVisitedCities } from '@/modules/travel/apis/travel.js'
+import { useTravleStore } from '@/modules/travel/stores/TravelStore.js'
 
-// 航线
-const Route = ref();
-// 机场
-const Airport  = ref();
-// 火车站
-const RailwayStation  = ref();
-// DOM元素
-const charts = ref(null);
-// 城市足迹
-const showCityList = ref([]);
-// 地图编码
-const MapCode = ref('11');
-// 注册图表
-let MapChart = null;
+const MAP_SERVER = import.meta.env.VITE_MAP_SERVER || 'http://127.0.0.1:8765'
+const EMPTY_COLLECTION = { type: 'FeatureCollection', features: [] }
+const store = useTravleStore()
+const { mapType } = storeToRefs(store)
+const mapContainer = ref(null)
+let map
+let popup
+let visitedCities = []
+let flightFeatures = EMPTY_COLLECTION
+let trainFeatures = EMPTY_COLLECTION
+let footprintFeatures = EMPTY_COLLECTION
+let planeAnimationFrame = 0
+let lastPlaneFrame = 0
+let trainAnimationFrame = 0
+let lastTrainFrame = 0
 
-const GeoData = ref(data);
-
-let station = [
-  {"name":"西安北","value":[108.938512,34.376164]},
-  {"name":"广州南","value":[113.269323,22.988558]},
-  {"name":"西宁","value":[101.814339,36.620183]},
-  {"name":"深圳北","value":[114.029225,22.609581]},
-  {"name":"南京南","value":[118.798171,31.96873]},
-  {"name":"上海虹桥","value":[121.320666,31.194106]},
-  {"name":"咸阳西","value":[108.666737,34.330999]},
-  {"name":"青岛北","value":[120.374402,36.168923]},
-]
-
-function CreateMapOption(name,MapData = [],route = true,airport = true,train = true){
-  let option = {
-          geo: {
-              map: name,
-              roam: true,
-              selectedMode: false,
-              zoom: 1.6,
-              center: [105, 39],
-              top: 'top',
-              show: true,
-              label: {
-                show: true,
-                color: '#ffffff',
-                formatter: (params) => {
-                  return MapData.includes(params.name) ? params.name : ''
-                }
-              },
-              // 地图样式
-              itemStyle: {
-                  borderColor: "rgba(111, 241, 184)",
-                  borderWidth: 0.4,
-                  areaColor: {
-                      type: "radial",
-                      x: 0.5,
-                      y: 0.5,
-                      r: 0.8,
-                      colorStops: [
-                          {
-                              offset: 0,
-                              color: "rgba(147, 235, 248, 0)", // 0% 处的颜色
-                          },
-                          {
-                              offset: 1,
-                              color: "rgba(147, 235, 248, .2)", // 100% 处的颜色
-                          },
-                      ],
-                      globalCoord: false, // 缺为 false
-                  },
-                  shadowColor: "rgba(128, 217, 248, .3)",
-                  shadowOffsetX: -2,
-                  shadowOffsetY: 2,
-                  shadowBlur: 10,
-              },
-              // 鼠标悬停样式
-              emphasis: {
-                  label: {
-                      show: false,
-                  },
-                  itemStyle: {
-                      areaColor:{
-                          type: "radial",
-                          x: 0.5,
-                          y: 0.5,
-                          r: 0.8,
-                          colorStops: [
-                              {
-                                  offset: 0,
-                                  color: "rgba(147, 235, 248, 0)", // 0% 处的颜色
-                              },
-                              {
-                                  offset: 1,
-                                  color: "rgba(56,155,183, .8)", // 100% 处的颜色
-                              },
-                          ],
-                          globalCoord: false, // 缺为 false
-                      },
-                      borderWidth: 1,
-                  },
-              },
-          },
-          visualMap: {
-            type:'piecewise',
-            show:false,
-            pieces: [
-              {lte: 1,color:'rgba(82,219,174,0.6)'},
-              {lte: 0,color:{
-                      type: "radial",
-                      x: 0.5,
-                      y: 0.5,
-                      r: 0.8,
-                      colorStops: [
-                          {
-                              offset: 0,
-                              color: "rgba(147, 235, 248, 0)", // 0% 处的颜色
-                          },
-                          {
-                              offset: 1,
-                              color: "rgba(147, 235, 248, .2)", // 100% 处的颜色
-                          },
-                      ],
-                      globalCoord: false, // 缺为 false
-                  }},
-            ],
-            seriesIndex:0,
-            left: 20,
-            bottom: 20,
-          },
-          tooltip: {
-            trigger: 'item',
-            axisPointer: {
-              type: 'shadow'
-            },
-            backgroundColor :'rgba(50,50,50,0.7)',
-            borderColor:'#6e8fda',
-            textStyle:{
-              color:'#ffff',
-              align:'left'
-            },
-            formatter:  (params) => {
-                  if(params.value){
-                    return `${params.name}<br />已探索：<strong style="color: red;">${params.value}%</strong>`
-                  }
-                  else{
-                    return `${params.name}<br /><strong style="color: red;">尚未探索</strong>`
-                  }
-          }
-          },
-          legend:{
-            show:false,
-            selected:{
-              'route':route,
-              'airport':airport,
-              'train':train,
-            }
-          },
-          series: [
-            {
-              type: "map",
-              map: name,
-              geoIndex: 0,
-              data: MapData.map(city => ({name: city,value: 1})),
-              selectedMode: false,
-              silent: true,
-              label: { show: false, },
-              itemStyle: {opacity: 1,},
-            },
-            {
-              name:'airport',
-              geoIndex:0,
-              type:'scatter',
-              data:Route.value,
-              coordinateSystem:"geo",
-              itemStyle: {
-                borderWidth:1,
-                color: 'rgb(65, 250, 170)',
-              },
-              tooltip:{
-                trigger:'item',
-                formatter:'{b}',
-              },
-            },
-            {
-              name:'route',
-              geoIndex:0,
-              type:'lines',
-              data:Airport.value,
-              lineStyle:{
-                color:'rgb(255, 255, 255)',
-                width:2,
-                curveness:0.3, //弧度
-              },
-                zlevel:1,
-                effect: {
-                show: true,
-                period: 4,
-                trailLength: 0,
-                color: 'rgb(255, 202, 102,.8)',
-                symbolSize: 15,
-                symbol:'path://M-122.27,388.39c1.54.13,2.81,1.22,3.85,3.27a14.85,14.85,0,0,1,1.54,6.75v7.75l20.62,12.9a1,1,0,0,1,.5,1.09l-.78,5.39a.91.91,0,0,1-.31.59.53.53,0,0,1-.19.15,1,1,0,0,1-.89.12l-18.95-5.51v12.47l5.94,3.39a1,1,0,0,1,.55.93v4.64a1.12,1.12,0,0,1-.33.77l0,0a1.21,1.21,0,0,1-.9.27l-10.62-1.51-10.61,1.51a1,1,0,0,1-.86-.23,1.13,1.13,0,0,1-.39-.82l0-4.64a1.06,1.06,0,0,1,.33-.77.56.56,0,0,1,.22-.17l5.93-3.39V420.92l-18.94,5.47a1.14,1.14,0,0,1-1-.17,1,1,0,0,1-.42-.87v-6.17a1,1,0,0,1,.54-.91l19.82-12.18v-7.7a15,15,0,0,1,1.54-6.75c1-2,2.31-3.12,3.86-3.25Z',
-              },
-              tooltip:{
-                trigger:'item',
-                formatter: '{b}',
-              },
-            },
-            {
-              name:'train',
-              Enabled:false,
-              geoIndex:0,
-              type:'scatter',
-              data:station,
-              coordinateSystem:"geo",
-              symbol:'path://M895.616384 347.812188q0 10.22977-0.511489 19.436563t-1.534466 19.436563q-9.206793 84.907093-37.338661 163.164835t-71.096903 150.377622-99.228771 138.613387-121.734266 127.872128q-9.206793 11.252747-23.528472 11.252747-15.344655 0-24.551449-11.252747-65.470529-61.378621-122.245754-128.895105t-100.251748-141.170829-71.608392-152.935065-36.315684-165.210789q0-8.183816-0.511489-15.344655t-0.511489-15.344655q0-71.608392 28.131868-135.032967t76.211788-110.481518 113.038961-74.677323 138.613387-27.62038 138.101898 27.62038 112.527473 74.677323 76.211788 110.481518 28.131868 135.032967zM540.643357 507.396603q33.758242 0 63.424575-12.787213t51.66034-34.26973 34.781219-50.637363 12.787213-61.89011-12.787213-61.89011-34.781219-50.637363-51.66034-34.26973-63.424575-12.787213-63.424575 12.787213-52.171828 34.26973-35.292707 50.637363-12.787213 61.89011 12.787213 61.89011 35.292707 50.637363 52.171828 34.26973 63.424575 12.787213z',
-              symbolSize:10,
-              itemStyle: {
-                // borderWidth:1,
-                color: 'rgb(256,0,0)',
-              },
-              label:{
-                show:true,
-                position:'bottom',
-                formatter:'{b}',
-                fontSize:12,
-              },
-              tooltip:{
-                trigger:'item',
-                formatter:'{b}',
-              },
-            },
-          ]
-};
-  return option;
+function baseLayers(source, prefix, minzoom = 0) {
+  const textName = ['coalesce', ['get', 'name:zh-Hans'], ['get', 'name']]
+  return [
+    { id: `${prefix}-earth`, type: 'fill', source, 'source-layer': 'earth', minzoom, paint: { 'fill-color': '#081522' } },
+    { id: `${prefix}-landuse`, type: 'fill', source, 'source-layer': 'landuse', minzoom: Math.max(2, minzoom), paint: { 'fill-color': ['match', ['get', 'kind'], ['park', 'forest', 'nature_reserve'], '#123a35', '#101f2b'], 'fill-opacity': 0.8 } },
+    { id: `${prefix}-water`, type: 'fill', source, 'source-layer': 'water', minzoom, paint: { 'fill-color': '#07101d' } },
+    { id: `${prefix}-boundaries`, type: 'line', source, 'source-layer': 'boundaries', minzoom, paint: { 'line-color': '#39708a', 'line-width': ['interpolate', ['linear'], ['zoom'], 2, 0.35, 10, 1.1], 'line-opacity': 0.7 } },
+    { id: `${prefix}-roads-casing`, type: 'line', source, 'source-layer': 'roads', minzoom: Math.max(4, minzoom), filter: ['!=', ['get', 'kind'], 'rail'], paint: { 'line-color': '#050c13', 'line-width': ['interpolate', ['linear'], ['zoom'], 5, 1.1, 14, 7] } },
+    { id: `${prefix}-roads`, type: 'line', source, 'source-layer': 'roads', minzoom: Math.max(4, minzoom), filter: ['!=', ['get', 'kind'], 'rail'], paint: { 'line-color': ['match', ['get', 'kind'], ['highway', 'major_road'], '#75633f', '#3f5662'], 'line-width': ['interpolate', ['linear'], ['zoom'], 5, 0.45, 14, 4.2], 'line-opacity': 0.3 } },
+    { id: `${prefix}-buildings`, type: 'fill', source, 'source-layer': 'buildings', minzoom: Math.max(12, minzoom), paint: { 'fill-color': '#263c49', 'fill-outline-color': '#3f5965' } },
+    { id: `${prefix}-road-labels`, type: 'symbol', source, 'source-layer': 'roads', minzoom: Math.max(11, minzoom), layout: { 'symbol-placement': 'line', 'text-field': textName, 'text-size': 11 }, paint: { 'text-color': '#c6d3d7', 'text-halo-color': '#071019', 'text-halo-width': 1.4 } },
+    { id: `${prefix}-place-labels`, type: 'symbol', source, 'source-layer': 'places', minzoom: Math.max(2, minzoom), layout: { 'text-field': textName, 'text-size': ['interpolate', ['linear'], ['zoom'], 2, 10, 9, 15] }, paint: { 'text-color': '#dce9ec', 'text-halo-color': '#071019', 'text-halo-width': 1.6 } },
+    {
+      id: `${prefix}-railways`,
+      type: 'line',
+      source,
+      'source-layer': 'roads',
+      minzoom: Math.max(1, minzoom),
+      filter: ['==', ['get', 'kind'], 'rail'], paint: {
+        'line-color': '#e05a5a',
+        'line-width': ['interpolate', ['linear'], ['zoom'], 5, 0.6, 10, 1.5, 14, 4],
+        'line-opacity': 0.85,
+        'line-dasharray': [4, 2]
+      }
+    },
+  ]
 }
 
-getVisitedCities().then(res => {
-  console.log(res.data)
-  showCityList.value = res.data
-  init()
+function createStyle() {
+  return {
+    version: 8,
+    sources: {
+      world: { type: 'vector', url: `pmtiles://${MAP_SERVER}/world.pmtiles`, attribution: '© OpenStreetMap contributors' },
+      china: { type: 'vector', url: `pmtiles://${MAP_SERVER}/china.pmtiles`, attribution: '© OpenStreetMap contributors' },
+    },
+    layers: [
+      { id: 'background', type: 'background', paint: { 'background-color': '#07101d' } },
+      ...baseLayers('world', 'world'),
+      ...baseLayers('china', 'china', 6.5),
+    ],
+  }
+}
+
+function lineCollection(records, kind) {
+  const features = []
+  const points = new Map()
+  const routeTotals = new Map()
+  const routeIndexes = new Map()
+  if (kind === 'flight') {
+    for (const record of records) {
+      const from = [Number(record.fromLongitude), Number(record.fromLatitude)]
+      const to = [Number(record.toLongitude), Number(record.toLatitude)]
+      if (![...from, ...to].every(Number.isFinite)) continue
+      const key = routeKey(from, to)
+      routeTotals.set(key, (routeTotals.get(key) || 0) + 1)
+    }
+  }
+  for (const record of records) {
+    const from = [Number(record.fromLongitude), Number(record.fromLatitude)]
+    const to = [Number(record.toLongitude), Number(record.toLatitude)]
+    if (![...from, ...to].every(Number.isFinite)) continue
+    if (kind === 'train') {
+      const routeStations = Array.isArray(record.routeStations)
+        ? record.routeStations
+            .map(station => ({ name: station.name, coordinates: [Number(station.longitude), Number(station.latitude)] }))
+            .filter(station => station.coordinates.every(Number.isFinite))
+        : []
+      const stations = routeStations.length >= 2
+        ? routeStations
+        : [{ name: record.From, coordinates: from }, { name: record.To, coordinates: to }]
+      for (let index = 0; index < stations.length - 1; index++) {
+        const start = stations[index]
+        const end = stations[index + 1]
+        features.push({
+          type: 'Feature',
+          properties: {
+            kind: 'train',
+            title: `${start.name} → ${end.name}`,
+            number: record.Number || '',
+            trainId: record.trainId,
+            segmentIndex: index
+          },
+          geometry: { type: 'LineString', coordinates: [start.coordinates, end.coordinates] }
+        })
+      }
+      stations.forEach((station, index) => {
+        const endpoint = index === 0 || index === stations.length - 1
+        const existing = points.get(station.name)
+        const pointKind = endpoint || existing?.pointKind === 'train-point' ? 'train-point' : 'train-waypoint'
+        points.set(station.name, { coordinates: station.coordinates, pointKind })
+      })
+      continue
+    }
+    let lane = 0
+    if (kind === 'flight') {
+      const key = routeKey(from, to)
+      const index = routeIndexes.get(key) || 0
+      lane = index - ((routeTotals.get(key) || 1) - 1) / 2
+      routeIndexes.set(key, index + 1)
+    }
+    const coordinates = kind === 'flight' ? flightArc(from, to, lane) : [from, to]
+    const title = `${record.From} → ${record.To}`
+    features.push({ type: 'Feature', properties: { kind, title, number: record.Number || '', lane }, geometry: { type: 'LineString', coordinates } })
+    points.set(record.From, { coordinates: from, pointKind: `${kind}-point` })
+    points.set(record.To, { coordinates: to, pointKind: `${kind}-point` })
+  }
+  for (const [name, point] of points) {
+    features.push({ type: 'Feature', properties: { kind: point.pointKind, title: name }, geometry: { type: 'Point', coordinates: point.coordinates } })
+  }
+  return { type: 'FeatureCollection', features }
+}
+
+function routeKey(from, to) {
+  return `${from[0].toFixed(5)},${from[1].toFixed(5)}>${to[0].toFixed(5)},${to[1].toFixed(5)}`
+}
+
+function flightArc(from, to, lane = 0, segments = 96) {
+  const start = projectMercator(from)
+  const end = projectMercator(to)
+  let dx = end[0] - start[0]
+  if (dx > 0.5) dx -= 1
+  if (dx < -0.5) dx += 1
+  const dy = end[1] - start[1]
+  const distance = Math.hypot(dx, dy)
+  if (distance < 1e-8) return [from, to]
+
+  const curveFactor = Math.max(0.16, Math.min(0.8, 0.42 + lane * 0.11))
+  const curve = distance * curveFactor
+  const control = [
+    start[0] + dx / 2 - (dy / distance) * curve,
+    start[1] + dy / 2 + (dx / distance) * curve
+  ]
+  const coordinates = []
+  for (let index = 0; index <= segments; index++) {
+    const t = index / segments
+    const inverse = 1 - t
+    const x = inverse * inverse * start[0] + 2 * inverse * t * control[0] + t * t * (start[0] + dx)
+    const y = inverse * inverse * start[1] + 2 * inverse * t * control[1] + t * t * end[1]
+    coordinates.push(unprojectMercator([x, y]))
+  }
+  return coordinates
+}
+
+function projectMercator([longitude, latitude]) {
+  const limitedLatitude = Math.max(-85, Math.min(85, latitude))
+  const sin = Math.sin(limitedLatitude * Math.PI / 180)
+  return [(longitude + 180) / 360, 0.5 - Math.log((1 + sin) / (1 - sin)) / (4 * Math.PI)]
+}
+
+function unprojectMercator([x, y]) {
+  const longitude = x * 360 - 180
+  const latitude = Math.atan(Math.sinh(Math.PI * (1 - 2 * y))) * 180 / Math.PI
+  return [longitude, latitude]
+}
+
+function mercatorBearing(from, to) {
+  const start = projectMercator(from)
+  const end = projectMercator(to)
+  let dx = end[0] - start[0]
+  if (dx > 0.5) dx -= 1
+  if (dx < -0.5) dx += 1
+  const dy = end[1] - start[1]
+  return Math.atan2(dx, -dy) * 180 / Math.PI
+}
+
+function addPlaneIcon() {
+  if (map.hasImage('flight-plane-icon')) return
+  const canvas = document.createElement('canvas')
+  canvas.width = 64
+  canvas.height = 64
+  const context = canvas.getContext('2d')
+  context.beginPath()
+  context.moveTo(32, 3)
+  context.lineTo(38, 28)
+  context.lineTo(59, 37)
+  context.lineTo(59, 44)
+  context.lineTo(38, 39)
+  context.lineTo(39, 52)
+  context.lineTo(47, 58)
+  context.lineTo(47, 62)
+  context.lineTo(32, 57)
+  context.lineTo(17, 62)
+  context.lineTo(17, 58)
+  context.lineTo(25, 52)
+  context.lineTo(26, 39)
+  context.lineTo(5, 44)
+  context.lineTo(5, 37)
+  context.lineTo(26, 28)
+  context.closePath()
+  context.fillStyle = '#ffd47d'
+  context.fill()
+  context.lineWidth = 3
+  context.strokeStyle = '#06101a'
+  context.lineJoin = 'round'
+  context.stroke()
+  map.addImage('flight-plane-icon', context.getImageData(0, 0, 64, 64), { pixelRatio: 2 })
+}
+
+function addTravelLayers() {
+  if (map.getSource('explored-cities')) return
+  addPlaneIcon()
+  map.addSource('explored-cities', { type: 'geojson', data: cityGeoJson })
+  map.addSource('travel-lines', { type: 'geojson', data: EMPTY_COLLECTION })
+  map.addSource('animated-planes', { type: 'geojson', data: EMPTY_COLLECTION })
+  map.addSource('animated-train-dots', { type: 'geojson', data: EMPTY_COLLECTION })
+  map.addSource('footprint-points', {
+    type: 'geojson',
+    data: footprintFeatures,
+    cluster: true,
+    clusterMaxZoom: 12,
+    clusterRadius: 42
+  })
+  map.addLayer({ id: 'explored-fill', type: 'fill', source: 'explored-cities', filter: ['in', ['get', 'name'], ['literal', visitedCities]], paint: { 'fill-color': '#37e6a5', 'fill-opacity': 0.38 } })
+  map.addLayer({ id: 'explored-outline', type: 'line', source: 'explored-cities', filter: ['in', ['get', 'name'], ['literal', visitedCities]], paint: { 'line-color': '#7effcf', 'line-width': 1.5, 'line-opacity': 0.9 } })
+  map.addLayer({ id: 'flight-route-glow', type: 'line', source: 'travel-lines', filter: ['==', ['get', 'kind'], 'flight'], paint: { 'line-color': '#ffbd59', 'line-width': 7, 'line-opacity': 0.18, 'line-blur': 4 } })
+  map.addLayer({ id: 'travel-routes', type: 'line', source: 'travel-lines', filter: ['==', ['geometry-type'], 'LineString'], paint: { 'line-color': ['match', ['get', 'kind'], 'flight', '#ffbd59', '#59d8ff'], 'line-width': 2.4, 'line-opacity': 0.92, 'line-dasharray': [2, 1.2] } })
+  map.addLayer({ id: 'travel-points', type: 'circle', source: 'travel-lines', filter: ['in', ['get', 'kind'], ['literal', ['flight-point', 'train-point', 'train-waypoint']]], paint: { 'circle-radius': ['match', ['get', 'kind'], 'train-waypoint', 2.5, 5], 'circle-color': ['match', ['get', 'kind'], 'flight-point', '#ffbd59', '#59d8ff'], 'circle-stroke-color': '#06101a', 'circle-stroke-width': ['match', ['get', 'kind'], 'train-waypoint', 1, 2] } })
+  map.addLayer({ id: 'flight-plane-glow', type: 'circle', source: 'animated-planes', paint: { 'circle-radius': 11, 'circle-color': '#ffbd59', 'circle-opacity': 0.22, 'circle-blur': 0.75 } })
+  map.addLayer({ id: 'flight-planes', type: 'symbol', source: 'animated-planes', layout: { 'icon-image': 'flight-plane-icon', 'icon-size': 0.72, 'icon-rotate': ['get', 'bearing'], 'icon-rotation-alignment': 'map', 'icon-pitch-alignment': 'map', 'icon-allow-overlap': true, 'icon-ignore-placement': true } })
+  map.addLayer({ id: 'train-dot-glow', type: 'circle', source: 'animated-train-dots', paint: { 'circle-radius': 8, 'circle-color': '#59d8ff', 'circle-opacity': 0.2, 'circle-blur': 0.8 } })
+  map.addLayer({ id: 'train-moving-dots', type: 'circle', source: 'animated-train-dots', paint: { 'circle-radius': 3.2, 'circle-color': '#d8fbff', 'circle-stroke-color': '#188ca4', 'circle-stroke-width': 1.2 } })
+  map.addLayer({ id: 'footprint-clusters', type: 'circle', source: 'footprint-points', filter: ['has', 'point_count'], paint: { 'circle-color': '#37e6a5', 'circle-radius': ['step', ['get', 'point_count'], 14, 10, 18, 30, 23], 'circle-stroke-color': '#08231c', 'circle-stroke-width': 2 } })
+  map.addLayer({ id: 'footprint-cluster-count', type: 'symbol', source: 'footprint-points', filter: ['has', 'point_count'], layout: { 'text-field': ['get', 'point_count_abbreviated'], 'text-size': 11 }, paint: { 'text-color': '#062019' } })
+  map.addLayer({ id: 'footprint-markers', type: 'circle', source: 'footprint-points', filter: ['!', ['has', 'point_count']], paint: { 'circle-radius': 6, 'circle-color': '#37e6a5', 'circle-stroke-color': '#06101a', 'circle-stroke-width': 2 } })
+  updateMode()
+}
+
+function updateMode() {
+  if (!map?.getSource('travel-lines')) return
+  const footMode = mapType.value === 'foot'
+  map.setLayoutProperty('explored-fill', 'visibility', footMode ? 'visible' : 'none')
+  map.setLayoutProperty('explored-outline', 'visibility', footMode ? 'visible' : 'none')
+  map.setLayoutProperty('footprint-clusters', 'visibility', footMode ? 'visible' : 'none')
+  map.setLayoutProperty('footprint-cluster-count', 'visibility', footMode ? 'visible' : 'none')
+  map.setLayoutProperty('footprint-markers', 'visibility', footMode ? 'visible' : 'none')
+  map.getSource('travel-lines').setData(mapType.value === 'flight' ? flightFeatures : mapType.value === 'train' ? trainFeatures : EMPTY_COLLECTION)
+  if (mapType.value === 'flight') startPlaneAnimation()
+  else stopPlaneAnimation()
+  if (mapType.value === 'train') startTrainAnimation()
+  else stopTrainAnimation()
+}
+
+function planeCollection(timestamp) {
+  const routes = flightFeatures.features.filter(feature => feature.geometry?.type === 'LineString' && feature.properties?.kind === 'flight')
+  const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+  return {
+    type: 'FeatureCollection',
+    features: routes.map((route, index) => {
+      const coordinates = route.geometry.coordinates
+      const progress = reducedMotion ? 0.5 : ((timestamp / 12000) + index / Math.max(routes.length, 1)) % 1
+      const position = progress * (coordinates.length - 1)
+      const point = interpolateRoute(coordinates, position)
+      const before = interpolateRoute(coordinates, Math.max(0, position - 0.75))
+      const after = interpolateRoute(coordinates, Math.min(coordinates.length - 1, position + 0.75))
+      return {
+        type: 'Feature',
+        properties: { ...route.properties, kind: 'flight-plane', bearing: mercatorBearing(before, after) },
+        geometry: { type: 'Point', coordinates: point }
+      }
+    })
+  }
+}
+
+function interpolateRoute(coordinates, position) {
+  const segment = Math.min(Math.floor(position), coordinates.length - 2)
+  const fraction = position - segment
+  const from = coordinates[segment]
+  const to = coordinates[segment + 1]
+  return [from[0] + (to[0] - from[0]) * fraction, from[1] + (to[1] - from[1]) * fraction]
+}
+
+function animatePlanes(timestamp) {
+  planeAnimationFrame = 0
+  if (!map || mapType.value !== 'flight' || !map.getSource('animated-planes')) return
+  if (timestamp - lastPlaneFrame >= 40) {
+    map.getSource('animated-planes').setData(planeCollection(timestamp))
+    lastPlaneFrame = timestamp
+  }
+  if (!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
+    planeAnimationFrame = requestAnimationFrame(animatePlanes)
+  }
+}
+
+function startPlaneAnimation() {
+  if (planeAnimationFrame || !map?.getSource('animated-planes')) return
+  lastPlaneFrame = 0
+  planeAnimationFrame = requestAnimationFrame(animatePlanes)
+}
+
+function stopPlaneAnimation() {
+  if (planeAnimationFrame) cancelAnimationFrame(planeAnimationFrame)
+  planeAnimationFrame = 0
+  map?.getSource('animated-planes')?.setData(EMPTY_COLLECTION)
+}
+
+function trainDotCollection(timestamp) {
+  const segments = trainFeatures.features.filter(feature => feature.geometry?.type === 'LineString' && feature.properties?.kind === 'train')
+  const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+  const routes = new Map()
+  for (const segment of segments) {
+    const routeId = String(segment.properties?.trainId ?? segment.properties?.number ?? '')
+    if (!routes.has(routeId)) routes.set(routeId, [])
+    routes.get(routeId).push(segment)
+  }
+  return {
+    type: 'FeatureCollection',
+    features: Array.from(routes.values()).map((routeSegments, routeIndex) => {
+      routeSegments.sort((left, right) => Number(left.properties.segmentIndex) - Number(right.properties.segmentIndex))
+      const progress = reducedMotion ? 0.5 : ((timestamp / 7200) + routeIndex / Math.max(routes.size, 1)) % 1
+      const routePosition = progress * routeSegments.length
+      const segmentIndex = Math.min(Math.floor(routePosition), routeSegments.length - 1)
+      const segment = routeSegments[segmentIndex]
+      const coordinates = segment.geometry.coordinates
+      const segmentProgress = routePosition - segmentIndex
+      return {
+        type: 'Feature',
+        properties: { ...segment.properties, kind: 'train-moving-dot' },
+        geometry: { type: 'Point', coordinates: interpolateRoute(coordinates, segmentProgress * (coordinates.length - 1)) }
+      }
+    })
+  }
+}
+
+function animateTrainDots(timestamp) {
+  trainAnimationFrame = 0
+  if (!map || mapType.value !== 'train' || !map.getSource('animated-train-dots')) return
+  if (timestamp - lastTrainFrame >= 40) {
+    map.getSource('animated-train-dots').setData(trainDotCollection(timestamp))
+    lastTrainFrame = timestamp
+  }
+  if (!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
+    trainAnimationFrame = requestAnimationFrame(animateTrainDots)
+  }
+}
+
+function startTrainAnimation() {
+  if (trainAnimationFrame || !map?.getSource('animated-train-dots')) return
+  lastTrainFrame = 0
+  trainAnimationFrame = requestAnimationFrame(animateTrainDots)
+}
+
+function stopTrainAnimation() {
+  if (trainAnimationFrame) cancelAnimationFrame(trainAnimationFrame)
+  trainAnimationFrame = 0
+  map?.getSource('animated-train-dots')?.setData(EMPTY_COLLECTION)
+}
+
+async function loadTravelData() {
+  const results = await Promise.allSettled([getVisitedCities(), getTicketData('flight'), getTicketData('train'), getFootprints()])
+  const value = index => results[index].status === 'fulfilled' ? results[index].value?.data || [] : []
+  visitedCities = value(0)
+  flightFeatures = lineCollection(value(1), 'flight')
+  trainFeatures = lineCollection(value(2), 'train')
+  footprintFeatures = {
+    type: 'FeatureCollection',
+    features: value(3)
+      .filter(item => Number.isFinite(Number(item.longitude)) && Number.isFinite(Number(item.latitude)))
+      .map(item => ({
+        type: 'Feature',
+        properties: {
+          title: item.spotName,
+          detail: [item.regionName, item.spotType, item.visitTime].filter(Boolean).join(' · ')
+        },
+        geometry: { type: 'Point', coordinates: [Number(item.longitude), Number(item.latitude)] }
+      }))
+  }
+  map?.getSource('footprint-points')?.setData(footprintFeatures)
+  if (map?.getLayer('explored-fill')) {
+    const filter = ['in', ['get', 'name'], ['literal', visitedCities]]
+    map.setFilter('explored-fill', filter)
+    map.setFilter('explored-outline', filter)
+  }
+  updateMode()
+}
+
+onMounted(async () => {
+  const protocol = new Protocol()
+  maplibregl.addProtocol('pmtiles', protocol.tile)
+  map = new maplibregl.Map({
+    container: mapContainer.value,
+    style: createStyle(),
+    center: [104, 35],
+    zoom: 2.2,
+    minZoom: 1,
+    maxZoom: 16,
+    localIdeographFontFamily: 'Microsoft YaHei, sans-serif',
+    attributionControl: false,
+  })
+  map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right')
+  map.on('load', addTravelLayers)
+  await loadTravelData()
+  if (map.loaded()) addTravelLayers()
+  popup = new maplibregl.Popup({ closeButton: false, closeOnClick: true })
+  map.on('click', event => {
+    const feature = map.queryRenderedFeatures(event.point, { layers: ['travel-routes', 'travel-points', 'flight-planes', 'train-moving-dots', 'footprint-markers', 'explored-fill'] })[0]
+    if (!feature) return
+    const title = feature.properties.title || feature.properties.name || '已探索地区'
+    const detailText = feature.properties.number || feature.properties.detail || ''
+    const detail = detailText ? `<br>${detailText}` : ''
+    popup.setLngLat(event.lngLat).setHTML(`<strong>${title}</strong>${detail}`).addTo(map)
+  })
 })
 
-const init = () => {
+watch(mapType, updateMode)
 
-  MapChart = echarts.init(charts.value);
-  echarts.registerMap('map', GeoData.value);
-
-  MapChart.setOption(CreateMapOption('map', showCityList.value, false, false, true), true);
-
-  MapChart.on('click',(event) => {
-    console.log(data);
-    data.features.forEach(element => {
-      if (element.properties.name === event.name)
-      {
-        console.log(element.properties);
-        MapCode.value = element.properties.adcode;
-        console.log(MapCode.value);
-      };
-    });
+onBeforeUnmount(() => {
+  stopPlaneAnimation()
+  stopTrainAnimation()
+  popup?.remove()
+  map?.remove()
+  maplibregl.removeProtocol('pmtiles')
 })
-
-}
-
-
-
-function Up(){
-  let code;
-  if (typeof(GeoData.features[0].properties.parent)=='string') {
-    code = JSON.parse(GeoData.features[0].properties.parent).adcode
-  }
-  else{
-    code = GeoData.features[0].properties.parent.adcode
-  }
-  let A = String(code).substring(0,2)
-  let B = String(code).substring(2,4)
-  let C = GeoData.features.length
-  // console.log(A,B,C);
-  if(C=='1'){
-    if(A!='10'){MapCode.value = A+B+'00'}
-    else{MapCode.value = 'china'} 
-  }
-  else if(B!='00'){
-    MapCode.value = A+'0000'
-  }
-  else{
-    MapCode.value = 'china'
-  }
-}
-
 </script>
 
 <style scoped>
-  .map{
-    height: 560px;
-    width: 800px;
-    position: relative;
-  }
-  
-  .Up{
-    width: 100px;
-    height: 40px;
-    
-    position: absolute;
-    bottom: 10px;
-    right: 20px;
-    z-index: 111;
-    border: 2px solid rgb(6, 251, 247);
+.map-shell {
+  position: relative;
+  width: 800px;
+  height: 560px;
+  overflow: hidden;
+  background: #07101d;
+  border: 1px solid rgba(52, 210, 221, .3)
+}
 
-    background: radial-gradient(rgba(0, 225, 229, 0),rgba(0, 225, 229, .2));
+.map-canvas {
+  position: absolute;
+  inset: 0
+}
 
-    font-family:'SimHei';
-    font-weight: bold;
-    font-size: 20px;
-    color: rgb(50, 226, 246);
-  }
-  button:hover{
-    background: radial-gradient(rgba(136, 200, 246, 0),rgba(178, 219, 234, 0.5));
-  }
+.map-legend {
+  position: absolute;
+  z-index: 2;
+  background: rgba(5, 14, 24, .86);
+  border: 1px solid rgba(77, 196, 207, .34);
+  color: #b9d5dc;
+  font-size: 12px;
+  backdrop-filter: blur(6px)
+}
+
+.map-legend {
+  left: 12px;
+  bottom: 12px;
+  display: flex;
+  gap: 14px;
+  padding: 8px 10px
+}
+
+.map-legend span {
+  display: flex;
+  align-items: center;
+  gap: 6px
+}
+
+.legend-swatch {
+  display: inline-block;
+  width: 18px;
+  height: 4px;
+  background: #37e6a5
+}
+
+.legend-swatch.flight {
+  background: #ffbd59
+}
+
+.legend-swatch.train {
+  background: #59d8ff
+}
+
+:deep(.maplibregl-ctrl-group) {
+  border-radius: 4px;
+  background: #071522
+}
+
+:deep(.maplibregl-ctrl-group button) {
+  background-color: #071522
+}
+
+:deep(.maplibregl-popup-content) {
+  padding: 10px 12px;
+  background: #081522;
+  color: #dce9ec;
+  border: 1px solid #2d6976;
+  border-radius: 4px
+}
 </style>

@@ -294,7 +294,6 @@ const queryForm = reactive({
 })
 
 onMounted(async () => {
-  await stationStore.initTrainStations()
   await loadData()
 })
 
@@ -335,11 +334,14 @@ const loadData = async () => {
   loading.value = false
 }
 
-const queryStation = (q, cb) => {
-  const data = stationStore.stationList
-      .filter(i => i.name.includes(q || ''))
-      .map(i => ({ value: i.name }))
-  cb(data)
+const queryStation = async (q, cb) => {
+  if (!q?.trim()) return cb([])
+  try {
+    const suggestions = await stationStore.search(q)
+    if (suggestions) cb(suggestions)
+  } catch {
+    cb([])
+  }
 }
 
 const filteredList = computed(() => trainList.value)

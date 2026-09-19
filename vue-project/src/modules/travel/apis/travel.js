@@ -39,3 +39,25 @@ export const getVisitedCities = () => {
         method: 'get',
     })
 }
+
+export const getFootprints = () => request({
+    url: '/travel/footprints',
+    method: 'get'
+})
+
+export const addFootprint = (data) => request({
+    url: '/travel/footprints',
+    method: 'post',
+    data
+})
+
+export const updateFootprint = (id, data) => request({
+    url: `/travel/footprints/${id}`,
+    method: 'put',
+    data
+})
+
+export const deleteFootprint = (id) => request({
+    url: `/travel/footprints/${id}`,
+    method: 'delete'
+})

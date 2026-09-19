@@ -5,7 +5,7 @@
         <!-- 左侧菜单 -->
         <el-aside width="220px" style="height: 100vh; background: #390062;">
           <el-menu
-              default-active="/travel/admin/trainTicket"
+              :default-active="$route.path"
               class="el-menu-vertical-demo"
               unique-opened
               background-color="#390062"
@@ -29,6 +29,11 @@
             <el-menu-item index="/travel/admin/flightTicket">
               <i class="el-icon-plane"></i>
               <span>飞机票管理</span>
+            </el-menu-item>
+
+            <el-menu-item index="/travel/admin/footprint">
+              <i class="el-icon-location"></i>
+              <span>足迹地区管理</span>
             </el-menu-item>
 
             <div style="flex: 1;"></div>

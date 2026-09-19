@@ -32,4 +32,11 @@ public class RegionCodeController {
         String fullName = regionCodeService.getFullRegionName(code);
         return Result.success(fullName);
     }
+
+    @GetMapping("/search")
+    @Operation(summary = "按名称片段搜索行政区")
+    public Result search(@RequestParam String keyword,
+                         @RequestParam(required = false) Integer level) {
+        return Result.success(regionCodeService.search(keyword, level));
+    }
 }

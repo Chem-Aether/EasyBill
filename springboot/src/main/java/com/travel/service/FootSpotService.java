@@ -1,13 +1,13 @@
 package com.travel.service;
 
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.travel.entity.FootSpot;
 import com.travel.mapper.FootSpotMapper;
 import com.utils.entity.RegionCode;
 import com.utils.mapper.RegionCodeMapper;
-import com.utils.service.RegionCodeService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -23,7 +23,53 @@ public class FootSpotService {
     private RegionCodeMapper regionCodeMapper;
 
     public List<FootSpot> findAll() {
-        return footSpotMapper.selectList(null);
+        return footSpotMapper.selectList(null).stream()
+                .sorted(Comparator.comparing(FootSpot::getVisitTime,
+                        Comparator.nullsLast(Comparator.reverseOrder())))
+                .collect(Collectors.toList());
+    }
+
+    public List<Map<String, Object>> findAllWithRegion() {
+        return findAll().stream().map(spot -> {
+            Map<String, Object> row = new LinkedHashMap<>();
+            row.put("spotId", spot.getSpotId());
+            row.put("userId", spot.getUserId());
+            row.put("adcode", spot.getAdcode());
+            row.put("regionName", getFullRegionName(spot.getAdcode()));
+            row.put("spotName", spot.getSpotName());
+            row.put("spotType", spot.getSpotType());
+            row.put("visitTime", spot.getVisitTime());
+            row.put("longitude", spot.getLongitude());
+            row.put("latitude", spot.getLatitude());
+            row.put("address", spot.getAddress());
+            return row;
+        }).collect(Collectors.toList());
+    }
+
+    public FootSpot add(FootSpot spot) {
+        validate(spot);
+        spot.setSpotId(null);
+        if (spot.getUserId() == null) {
+            spot.setUserId(1L);
+        }
+        footSpotMapper.insert(spot);
+        return spot;
+    }
+
+    public FootSpot update(Long id, FootSpot spot) {
+        if (id == null || footSpotMapper.selectById(id) == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "足迹记录不存在");
+        }
+        validate(spot);
+        spot.setSpotId(id);
+        footSpotMapper.updateById(spot);
+        return footSpotMapper.selectById(id);
+    }
+
+    public void delete(Long id) {
+        if (footSpotMapper.deleteById(id) == 0) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "足迹记录不存在");
+        }
     }
 
     public Map<String, Integer> statsProvinceCityDistrictCount() {
@@ -32,17 +78,22 @@ public class FootSpotService {
 
         // 2. 统计 省（前2位）
         long provinceCount = list.stream()
-                .map(spot -> spot.getAdcode().substring(0, 2))
+                .map(FootSpot::getAdcode)
+                .filter(code -> code != null && code.length() >= 6)
+                .map(code -> code.substring(0, 2))
                 .distinct().count();
 
         // 3. 统计 市（前4位）
         long cityCount = list.stream()
-                .map(spot -> spot.getAdcode().substring(0, 4))
+                .map(FootSpot::getAdcode)
+                .filter(code -> code != null && code.length() >= 6)
+                .map(this::getCityCode)
                 .distinct().count();
 
         // 4. 统计 区/县（完整6位）
         long districtCount = list.stream()
                 .map(FootSpot::getAdcode)
+                .filter(code -> code != null && code.length() >= 6)
                 .distinct().count();
 
         // 5. 返回结果
@@ -89,5 +140,46 @@ public class FootSpotService {
 
         // 普通市 → 取前 4 位
         return adcode.substring(0, 4);
+    }
+
+    private void validate(FootSpot spot) {
+        if (spot == null || spot.getAdcode() == null || spot.getAdcode().isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "请选择区县");
+        }
+        RegionCode region = regionCodeMapper.selectById(spot.getAdcode());
+        if (region == null || !Objects.equals(region.getLevel(), 3)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "请选择有效的区县级行政区");
+        }
+        if (spot.getSpotName() == null || spot.getSpotName().isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "地点名称不能为空");
+        }
+        if (spot.getSpotType() == null || spot.getSpotType().isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "地点类型不能为空");
+        }
+        if ((spot.getLongitude() == null) != (spot.getLatitude() == null)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "经纬度必须同时填写");
+        }
+        if (spot.getLongitude() != null &&
+                (spot.getLongitude().doubleValue() < -180 || spot.getLongitude().doubleValue() > 180)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "经度必须在 -180 到 180 之间");
+        }
+        if (spot.getLatitude() != null &&
+                (spot.getLatitude().doubleValue() < -90 || spot.getLatitude().doubleValue() > 90)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "纬度必须在 -90 到 90 之间");
+        }
+    }
+
+    private String getFullRegionName(String code) {
+        List<String> names = new ArrayList<>();
+        Set<String> visited = new HashSet<>();
+        RegionCode current = regionCodeMapper.selectById(code);
+        while (current != null && visited.add(current.getCode())) {
+            names.add(current.getName());
+            String parentCode = current.getParentCode();
+            if (parentCode == null || parentCode.isBlank() || "0".equals(parentCode)) break;
+            current = regionCodeMapper.selectById(parentCode);
+        }
+        Collections.reverse(names);
+        return names.isEmpty() ? "未知地区" : String.join("", names);
     }
 }

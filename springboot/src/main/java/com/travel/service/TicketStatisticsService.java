@@ -7,6 +7,10 @@ import com.travel.entity.TrainStationRecord;
 import com.travel.mapper.FlightRecordMapper;
 import com.travel.mapper.TrainRecordMapper;
 import com.travel.mapper.TrainStationRecordMapper;
+import com.utils.entity.Airport;
+import com.utils.entity.TrainStation;
+import com.utils.mapper.AirportMapper;
+import com.utils.mapper.TrainStationMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -26,6 +30,10 @@ public class TicketStatisticsService {
     private FlightRecordMapper flightRecordMapper;
     @Autowired
     private TrainStationRecordMapper trainStationRecordMapper;
+    @Autowired
+    private AirportMapper airportMapper;
+    @Autowired
+    private TrainStationMapper trainStationMapper;
 
     public List<Map<String, Object>> getTicketList(String type) {
         List<Map<String, Object>> trainList = new ArrayList<>();
@@ -134,15 +142,78 @@ public class TicketStatisticsService {
         List<TrainRecord> list = trainRecordMapper.selectList(null);
         List<Map<String, Object>> result = new ArrayList<>();
 
+        List<Long> trainIds = list.stream()
+                .map(TrainRecord::getTrainId)
+                .filter(Objects::nonNull)
+                .toList();
+        List<TrainStationRecord> routeRecords = trainIds.isEmpty() ? List.of() :
+                trainStationRecordMapper.selectList(Wrappers.<TrainStationRecord>lambdaQuery()
+                        .in(TrainStationRecord::getTrainId, trainIds)
+                        .orderByAsc(TrainStationRecord::getTrainId, TrainStationRecord::getStationOrder, TrainStationRecord::getId));
+        Map<Long, List<TrainStationRecord>> routeIndex = routeRecords.stream()
+                .collect(java.util.stream.Collectors.groupingBy(
+                        TrainStationRecord::getTrainId,
+                        LinkedHashMap::new,
+                        java.util.stream.Collectors.toList()));
+
+        Set<String> stationNames = new HashSet<>();
+        list.forEach(record -> {
+            if (record.getStartStation() != null) stationNames.add(record.getStartStation());
+            if (record.getEndStation() != null) stationNames.add(record.getEndStation());
+        });
+        routeRecords.stream()
+                .map(TrainStationRecord::getStationName)
+                .filter(Objects::nonNull)
+                .forEach(stationNames::add);
+        Map<String, TrainStation> stationIndex = stationNames.isEmpty() ? Map.of() :
+                trainStationMapper.selectList(Wrappers.<TrainStation>lambdaQuery()
+                                .in(TrainStation::getName, stationNames)
+                                .select(TrainStation::getName, TrainStation::getLongitude, TrainStation::getLatitude))
+                        .stream().collect(java.util.stream.Collectors.toMap(TrainStation::getName, station -> station, (a, b) -> a));
+
         for (TrainRecord t : list) {
             Map<String, Object> item = new HashMap<>();
             List<Map<String, Object>> more = new ArrayList<>();
 
             item.put("Number", t.getTrainNo());
+            item.put("trainId", t.getTrainId());
             item.put("From", t.getStartStation());
             item.put("To", t.getEndStation());
             item.put("time", calculateDuration(t.getDepartureDatetime(), t.getArrivalDatetime()));
             item.put("Time", t.getDepartureDatetime());
+            TrainStation fromStation = stationIndex.get(t.getStartStation());
+            TrainStation toStation = stationIndex.get(t.getEndStation());
+            if (fromStation != null) {
+                item.put("fromLongitude", fromStation.getLongitude());
+                item.put("fromLatitude", fromStation.getLatitude());
+            }
+            if (toStation != null) {
+                item.put("toLongitude", toStation.getLongitude());
+                item.put("toLatitude", toStation.getLatitude());
+            }
+
+            List<String> orderedNames = new ArrayList<>();
+            List<TrainStationRecord> ticketRoute = routeIndex.getOrDefault(t.getTrainId(), List.of());
+            if (ticketRoute.isEmpty()) {
+                addStationName(orderedNames, t.getStartStation());
+                addStationName(orderedNames, t.getEndStation());
+            } else {
+                for (TrainStationRecord station : ticketRoute) {
+                    addStationName(orderedNames, station.getStationName());
+                }
+            }
+
+            List<Map<String, Object>> routeStations = new ArrayList<>();
+            for (String stationName : orderedNames) {
+                TrainStation station = stationIndex.get(stationName);
+                if (station == null || station.getLongitude() == null || station.getLatitude() == null) continue;
+                Map<String, Object> routeStation = new LinkedHashMap<>();
+                routeStation.put("name", stationName);
+                routeStation.put("longitude", station.getLongitude());
+                routeStation.put("latitude", station.getLatitude());
+                routeStations.add(routeStation);
+            }
+            item.put("routeStations", routeStations);
 
             more.add(Map.of("label", "发车时间", "value", formatTime(t.getDepartureDatetime())));
             more.add(Map.of("label", "到达时间", "value", formatTime(t.getArrivalDatetime())));
@@ -156,9 +227,25 @@ public class TicketStatisticsService {
         return result;
     }
 
+    private void addStationName(List<String> names, String stationName) {
+        if (stationName == null || stationName.isBlank()) return;
+        if (names.isEmpty() || !stationName.equals(names.get(names.size() - 1))) {
+            names.add(stationName);
+        }
+    }
+
     private List<Map<String, Object>> getFlightTickets() {
         List<FlightRecord> list = flightRecordMapper.selectList(null);
         List<Map<String, Object>> result = new ArrayList<>();
+
+        Set<String> airportCodes = new HashSet<>();
+        list.forEach(record -> {
+            if (record.getDepartureIcao() != null) airportCodes.add(record.getDepartureIcao());
+            if (record.getArrivalIcao() != null) airportCodes.add(record.getArrivalIcao());
+        });
+        Map<String, Airport> airportIndex = airportCodes.isEmpty() ? Map.of() :
+                airportMapper.selectBatchIds(airportCodes).stream()
+                        .collect(java.util.stream.Collectors.toMap(Airport::getIcao, airport -> airport));
 
         for (FlightRecord f : list) {
             Map<String, Object> item = new HashMap<>();
@@ -169,6 +256,16 @@ public class TicketStatisticsService {
             item.put("To", f.getArrivalIcao());
             item.put("time", calculateDuration(f.getTakeoffTime(), f.getLandingTime()));
             item.put("Time", f.getTakeoffTime());
+            Airport fromAirport = airportIndex.get(f.getDepartureIcao());
+            Airport toAirport = airportIndex.get(f.getArrivalIcao());
+            if (fromAirport != null) {
+                item.put("fromLongitude", fromAirport.getLongitude());
+                item.put("fromLatitude", fromAirport.getLatitude());
+            }
+            if (toAirport != null) {
+                item.put("toLongitude", toAirport.getLongitude());
+                item.put("toLatitude", toAirport.getLatitude());
+            }
 
             more.add(Map.of("label", "起飞时间", "value", formatTime(f.getTakeoffTime())));
             more.add(Map.of("label", "降落时间", "value", formatTime(f.getLandingTime())));

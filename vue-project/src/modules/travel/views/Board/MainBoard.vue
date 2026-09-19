@@ -59,9 +59,8 @@ import { useRouter } from 'vue-router'
 const router = useRouter()
 
 function Floot(event){
-  //设置为铁路面板，普通地图
-  store.mapName = '铁路';
-  store.mapType = 'floor';
+  store.mapName = '足迹';
+  store.mapType = 'foot';
 }
 function Plane(event){
   //设置为航空面板，航线图

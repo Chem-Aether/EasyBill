@@ -19,3 +19,5 @@ IDED 配置
 **/Thumbs.db
 **/Thumbs.db?
 
+# 数据
+**.pmtiles

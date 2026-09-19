@@ -216,8 +216,14 @@ import { useAirportStore } from '@/modules/travel/stores/allAirportsList.js'
 const airportStore = useAirportStore()
 
 // 搜索机场（展示：名称(ICAO)）
-const queryAirport = (queryString, cb) => {
-  cb(airportStore.searchAirport(queryString))
+const queryAirport = async (queryString, cb) => {
+  if (!queryString?.trim()) return cb([])
+  try {
+    const suggestions = await airportStore.search(queryString)
+    if (suggestions) cb(suggestions)
+  } catch {
+    cb([])
+  }
 }
 
 // 选择后：输入框显示中文(ICAO)，但真实提交字段保存 ICAO
@@ -268,20 +274,15 @@ const flightList = ref([])
 const pageInfo = ref({ total: 0 })
 
 onMounted(async () => {
-  await airportStore.initAirports()
   await loadData()
 })
 
 // 用 ICAO 回填显示文本（列表加载/刷新时）
 const fillAirportDisplays = (list = []) => {
-  const map = new Map((airportStore.airportList || []).map(a => [a.icao, a.name]))
   return (list || []).map(item => {
-  const depName = map.get(item.departureIcao)
-  const arrName = map.get(item.arrivalIcao)
-
   // 入库字段：airport 是中文名，icao 是码；展示两者组合
-  item.departureAirportDisplay = depName ? `${depName} (${item.departureIcao})` : (item.departureAirport || item.departureIcao || '')
-  item.arrivalAirportDisplay = arrName ? `${arrName} (${item.arrivalIcao})` : (item.arrivalAirport || item.arrivalIcao || '')
+  item.departureAirportDisplay = item.departureAirport && item.departureIcao ? `${item.departureAirport} (${item.departureIcao})` : (item.departureAirport || item.departureIcao || '')
+  item.arrivalAirportDisplay = item.arrivalAirport && item.arrivalIcao ? `${item.arrivalAirport} (${item.arrivalIcao})` : (item.arrivalAirport || item.arrivalIcao || '')
 
   // 经停机场表里只有中文，展示直接用中文即可
   item.stopoverAirportDisplay = item.stopoverAirport || ''

@@ -13,6 +13,7 @@ export default [
         children: [
             { path: 'trainTicket', component: () => import('../views/admin/trainTicket.vue'), },
             { path: 'flightTicket', component: () => import('../views/admin/flightTicket.vue'), },
+            { path: 'footprint', component: () => import('../views/admin/footprint.vue'), },
         ]
     }
 ]

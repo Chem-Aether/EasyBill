@@ -5,11 +5,13 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
+.npm-cache/
 
 # 构建产物
 dist/
 dist-ssr
 coverage/
+
 
 # 环境变量文件
 .env.local
@@ -33,3 +35,4 @@ coverage/
 # 其他
 *.log
 *.tsbuildinfo
+

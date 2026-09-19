@@ -1,15 +1,26 @@
 import request from '@/utils/request.js'
 
-export const getTrainStationAll = (params = {}) => {
+
+export const searchAirports = (keyword) => {
     return request({
-        url: '/sys/support/TrainStations/all',
+        url: '/sys/support/Airports/search',
         method: 'GET',
+        params: { keyword }
     })
 }
 
-export const getAirportAll = () => {
+export const searchTrainStations = (keyword) => {
     return request({
-        url: '/sys/support/Airports/all',
-        method: 'GET'
+        url: '/sys/support/TrainStations/search',
+        method: 'GET',
+        params: { keyword }
+    })
+}
+
+export const searchRegions = (keyword, level = 3) => {
+    return request({
+        url: '/sys/support/area/search',
+        method: 'GET',
+        params: { keyword, level }
     })
 }

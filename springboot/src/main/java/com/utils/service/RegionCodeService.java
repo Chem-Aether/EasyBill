@@ -1,9 +1,15 @@
 package com.utils.service;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.utils.entity.RegionCode;
 import com.utils.mapper.RegionCodeMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 
 @Service
@@ -21,6 +27,32 @@ public class RegionCodeService {
         }
         // 根据主键 code 查询
         return regionCodeMapper.selectById(code);
+    }
+
+    public List<Map<String, Object>> search(String keyword, Integer level) {
+        String text = keyword == null ? "" : keyword.trim();
+        if (text.isEmpty()) {
+            return List.of();
+        }
+
+        LambdaQueryWrapper<RegionCode> query = new LambdaQueryWrapper<RegionCode>()
+                .like(RegionCode::getName, text)
+                .orderByAsc(RegionCode::getCode)
+                .last("LIMIT 20");
+        if (level != null) {
+            query.eq(RegionCode::getLevel, level);
+        }
+
+        return regionCodeMapper.selectList(query).stream().map(region -> {
+            Map<String, Object> item = new LinkedHashMap<>();
+            item.put("code", region.getCode());
+            item.put("name", region.getName());
+            item.put("level", region.getLevel());
+            item.put("type", region.getType());
+            item.put("parentCode", region.getParentCode());
+            item.put("fullName", getFullRegionName(region.getCode()));
+            return item;
+        }).collect(Collectors.toList());
     }
 
     /**

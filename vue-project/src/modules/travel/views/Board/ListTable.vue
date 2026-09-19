@@ -2,8 +2,13 @@
   <div class="ListTable" v-if="ScenicSpotSource">
     <Border>
       <SmallTittle  style="margin-bottom: 10px;">行程统计</SmallTittle>
-      <div class="Content" ref="AutoScroll" @mouseenter="mEnter" @mouseleave="mLeave" @wheel="mScroll">
-        <div class="column" v-for="each, index in ScenicSpotSource" >
+      <div
+        ref="scrollContainer"
+        class="Content"
+        @mouseenter="pauseAutoScroll"
+        @mouseleave="resumeAutoScroll"
+      >
+        <div class="column" v-for="(each, index) in ScenicSpotSource" :key="`${each.name}-${index}`">
           <a href="/SpotsMsg">
           <div class="columnContent">
             <div class="ID">{{ index+1 }}</div>
@@ -27,7 +32,7 @@
 
 <script setup>
 import SmallTittle from '@/modules/travel/views/Board/SmallTittle.vue';
-import { ref ,onMounted} from 'vue'
+import { nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 
 
 
@@ -86,39 +91,53 @@ ScenicSpotSource.value = [
 
   ]
 
+const scrollContainer = ref(null)
+let animationFrame = 0
+let lastFrameTime = 0
+let scrollPosition = 0
+let paused = false
+const SCROLL_SPEED = 18
 
+function autoScroll(timestamp) {
+  const container = scrollContainer.value
+  if (!container) return
 
-//获取DOM
-const AutoScroll = ref()
-//定时器
-let Timer = null;
-onMounted(()=>{
+  if (!paused && container.scrollHeight > container.clientHeight) {
+    if (lastFrameTime) {
+      scrollPosition += SCROLL_SPEED * ((timestamp - lastFrameTime) / 1000)
+      if (scrollPosition + container.clientHeight >= container.scrollHeight - 1) {
+        scrollPosition = 0
+      }
+      container.scrollTop = scrollPosition
+    }
+  }
 
+  lastFrameTime = timestamp
+  animationFrame = requestAnimationFrame(autoScroll)
+}
 
+function pauseAutoScroll() {
+  paused = true
+  scrollPosition = scrollContainer.value?.scrollTop || 0
+}
+
+function resumeAutoScroll() {
+  scrollPosition = scrollContainer.value?.scrollTop || 0
+  paused = false
+  lastFrameTime = 0
+}
+
+onMounted(async () => {
+  await nextTick()
+  animationFrame = requestAnimationFrame(autoScroll)
 })
 
-function scroll(){
-    AutoScroll.value.scrollTop++
+onBeforeUnmount(() => {
+  cancelAnimationFrame(animationFrame)
+  animationFrame = 0
+})
 
-    let scrollItemBox = AutoScroll.value.children[0].clientHeight+10
-    // 当判断滚动的高度大于等于盒子高度时，从头开始滚动
-    if (AutoScroll.value.scrollTop >= scrollItemBox){
-        AutoScroll.value.insertBefore(AutoScroll.value.children[0],null)
-        AutoScroll.value.scrollTop = 0;
-    }
-}
 
-function mEnter(){
-  clearInterval(Timer);
-}
-
-function mLeave() {
-  Timer = setInterval(scroll,10);
-}
-
-function mScroll(event){
-  AutoScroll.value.scrollTop+=Math.sign(event.deltaY)*(AutoScroll.value.children[0].clientHeight+10)
-}
 
 //设置提示内容
 function SetText(params) {
@@ -151,17 +170,34 @@ function SetText(params) {
   }
   .Content{
     height: 280px;
-    overflow: hidden;
-    /* scroll-behavior: smooth; */
+    overflow-x: hidden;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: #258da0 rgba(6, 25, 38, 0.7);
     display: flex;
     align-items:center;
     flex-direction: column;
+    padding-right: 4px;
+  }
+  .Content::-webkit-scrollbar{
+    width: 6px;
+  }
+  .Content::-webkit-scrollbar-track{
+    background: rgba(6, 25, 38, 0.7);
+  }
+  .Content::-webkit-scrollbar-thumb{
+    background: #258da0;
+    border-radius: 3px;
+  }
+  .Content::-webkit-scrollbar-thumb:hover{
+    background: #36c4d8;
   }
 
   .column{
     z-index: 0;
     width: 90%;
     height: 65px;
+    flex: 0 0 65px;
     margin-top: 10px;
 
     display: flex;
