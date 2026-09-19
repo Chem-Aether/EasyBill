@@ -9,8 +9,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 @MapperScan({
         "com.bill.mapper",
         "com.user.mapper",
-        "com.travel.mapper",
-        "com.utils.mapper"
+        "com.travel.mapper"
 })
 public class SpringbootApplication {
 

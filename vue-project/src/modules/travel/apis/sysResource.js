@@ -1,26 +1,16 @@
-import request from '@/utils/request.js'
+import axios from 'axios'
 
+const geoRequest = axios.create({
+  baseURL: import.meta.env.VITE_MAP_SERVER || 'http://127.0.0.1:8765',
+  timeout: 10000,
+})
 
-export const searchAirports = (keyword) => {
-    return request({
-        url: '/sys/support/Airports/search',
-        method: 'GET',
-        params: { keyword }
-    })
-}
+geoRequest.interceptors.response.use(response => response.data)
 
-export const searchTrainStations = (keyword) => {
-    return request({
-        url: '/sys/support/TrainStations/search',
-        method: 'GET',
-        params: { keyword }
-    })
-}
+export const searchAirports = keyword => geoRequest.get('/api/airports/search', { params: { keyword } })
 
-export const searchRegions = (keyword, level = 3) => {
-    return request({
-        url: '/sys/support/area/search',
-        method: 'GET',
-        params: { keyword, level }
-    })
-}
+export const searchTrainStations = keyword => geoRequest.get('/api/stations/search', { params: { keyword } })
+
+export const searchRegions = (keyword, level = 3) => geoRequest.get('/api/regions/search', {
+  params: { keyword, level },
+})

@@ -1,9 +1,9 @@
 package com.travel.service;
 
+import com.mapserver.GeoReferenceClient;
+import com.mapserver.GeoReferenceClient.GeoRegion;
 import com.travel.entity.FootSpot;
 import com.travel.mapper.FootSpotMapper;
-import com.utils.entity.RegionCode;
-import com.utils.mapper.RegionCodeMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -20,7 +20,7 @@ public class FootSpotService {
     private FootSpotMapper footSpotMapper;
 
     @Autowired
-    private RegionCodeMapper regionCodeMapper;
+    private GeoReferenceClient geoReferenceClient;
 
     public List<FootSpot> findAll() {
         return footSpotMapper.selectList(null).stream()
@@ -30,12 +30,18 @@ public class FootSpotService {
     }
 
     public List<Map<String, Object>> findAllWithRegion() {
-        return findAll().stream().map(spot -> {
+        List<FootSpot> spots = findAll();
+        Map<String, GeoRegion> regions = geoReferenceClient.regionsByCode(spots.stream()
+                .map(FootSpot::getAdcode)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet()));
+        return spots.stream().map(spot -> {
             Map<String, Object> row = new LinkedHashMap<>();
             row.put("spotId", spot.getSpotId());
             row.put("userId", spot.getUserId());
             row.put("adcode", spot.getAdcode());
-            row.put("regionName", getFullRegionName(spot.getAdcode()));
+            GeoRegion region = regions.get(spot.getAdcode());
+            row.put("regionName", region == null || region.fullName() == null ? "未知地区" : region.fullName());
             row.put("spotName", spot.getSpotName());
             row.put("spotType", spot.getSpotType());
             row.put("visitTime", spot.getVisitTime());
@@ -117,11 +123,11 @@ public class FootSpotService {
                 .collect(Collectors.toSet());
 
         // 3. 根据城市code批量查询名称
-        List<RegionCode> cityList = regionCodeMapper.selectBatchIds(cityCodeSet);
+        Map<String, GeoRegion> cityIndex = geoReferenceClient.regionsByCode(cityCodeSet);
 
         // 4. 返回名称
-        return cityList.stream()
-                .map(RegionCode::getName)
+        return cityIndex.values().stream()
+                .map(GeoRegion::name)
                 .distinct()
                 .collect(Collectors.toList());
     }
@@ -146,8 +152,8 @@ public class FootSpotService {
         if (spot == null || spot.getAdcode() == null || spot.getAdcode().isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "请选择区县");
         }
-        RegionCode region = regionCodeMapper.selectById(spot.getAdcode());
-        if (region == null || !Objects.equals(region.getLevel(), 3)) {
+        GeoRegion region = geoReferenceClient.regionByCode(spot.getAdcode());
+        if (region == null || !Objects.equals(region.level(), 3)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "请选择有效的区县级行政区");
         }
         if (spot.getSpotName() == null || spot.getSpotName().isBlank()) {
@@ -169,17 +175,4 @@ public class FootSpotService {
         }
     }
 
-    private String getFullRegionName(String code) {
-        List<String> names = new ArrayList<>();
-        Set<String> visited = new HashSet<>();
-        RegionCode current = regionCodeMapper.selectById(code);
-        while (current != null && visited.add(current.getCode())) {
-            names.add(current.getName());
-            String parentCode = current.getParentCode();
-            if (parentCode == null || parentCode.isBlank() || "0".equals(parentCode)) break;
-            current = regionCodeMapper.selectById(parentCode);
-        }
-        Collections.reverse(names);
-        return names.isEmpty() ? "未知地区" : String.join("", names);
-    }
 }

@@ -48,3 +48,5 @@ springdoc:
                 display-request-duration: true
         packages-to-scan: com
 
+mapserver:
+        base-url: http://127.0.0.1:8765

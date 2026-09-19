@@ -1,16 +1,15 @@
 package com.travel.service;
 
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import com.mapserver.GeoReferenceClient;
+import com.mapserver.GeoReferenceClient.GeoAirport;
+import com.mapserver.GeoReferenceClient.GeoStation;
 import com.travel.entity.TrainRecord;
 import com.travel.entity.FlightRecord;
 import com.travel.entity.TrainStationRecord;
 import com.travel.mapper.FlightRecordMapper;
 import com.travel.mapper.TrainRecordMapper;
 import com.travel.mapper.TrainStationRecordMapper;
-import com.utils.entity.Airport;
-import com.utils.entity.TrainStation;
-import com.utils.mapper.AirportMapper;
-import com.utils.mapper.TrainStationMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -31,9 +30,7 @@ public class TicketStatisticsService {
     @Autowired
     private TrainStationRecordMapper trainStationRecordMapper;
     @Autowired
-    private AirportMapper airportMapper;
-    @Autowired
-    private TrainStationMapper trainStationMapper;
+    private GeoReferenceClient geoReferenceClient;
 
     public List<Map<String, Object>> getTicketList(String type) {
         List<Map<String, Object>> trainList = new ArrayList<>();
@@ -165,11 +162,7 @@ public class TicketStatisticsService {
                 .map(TrainStationRecord::getStationName)
                 .filter(Objects::nonNull)
                 .forEach(stationNames::add);
-        Map<String, TrainStation> stationIndex = stationNames.isEmpty() ? Map.of() :
-                trainStationMapper.selectList(Wrappers.<TrainStation>lambdaQuery()
-                                .in(TrainStation::getName, stationNames)
-                                .select(TrainStation::getName, TrainStation::getLongitude, TrainStation::getLatitude))
-                        .stream().collect(java.util.stream.Collectors.toMap(TrainStation::getName, station -> station, (a, b) -> a));
+        Map<String, GeoStation> stationIndex = geoReferenceClient.stationsByName(stationNames);
 
         for (TrainRecord t : list) {
             Map<String, Object> item = new HashMap<>();
@@ -181,15 +174,15 @@ public class TicketStatisticsService {
             item.put("To", t.getEndStation());
             item.put("time", calculateDuration(t.getDepartureDatetime(), t.getArrivalDatetime()));
             item.put("Time", t.getDepartureDatetime());
-            TrainStation fromStation = stationIndex.get(t.getStartStation());
-            TrainStation toStation = stationIndex.get(t.getEndStation());
+            GeoStation fromStation = stationIndex.get(t.getStartStation());
+            GeoStation toStation = stationIndex.get(t.getEndStation());
             if (fromStation != null) {
-                item.put("fromLongitude", fromStation.getLongitude());
-                item.put("fromLatitude", fromStation.getLatitude());
+                item.put("fromLongitude", fromStation.longitude());
+                item.put("fromLatitude", fromStation.latitude());
             }
             if (toStation != null) {
-                item.put("toLongitude", toStation.getLongitude());
-                item.put("toLatitude", toStation.getLatitude());
+                item.put("toLongitude", toStation.longitude());
+                item.put("toLatitude", toStation.latitude());
             }
 
             List<String> orderedNames = new ArrayList<>();
@@ -205,12 +198,12 @@ public class TicketStatisticsService {
 
             List<Map<String, Object>> routeStations = new ArrayList<>();
             for (String stationName : orderedNames) {
-                TrainStation station = stationIndex.get(stationName);
-                if (station == null || station.getLongitude() == null || station.getLatitude() == null) continue;
+                GeoStation station = stationIndex.get(stationName);
+                if (station == null || station.longitude() == null || station.latitude() == null) continue;
                 Map<String, Object> routeStation = new LinkedHashMap<>();
                 routeStation.put("name", stationName);
-                routeStation.put("longitude", station.getLongitude());
-                routeStation.put("latitude", station.getLatitude());
+                routeStation.put("longitude", station.longitude());
+                routeStation.put("latitude", station.latitude());
                 routeStations.add(routeStation);
             }
             item.put("routeStations", routeStations);
@@ -243,9 +236,7 @@ public class TicketStatisticsService {
             if (record.getDepartureIcao() != null) airportCodes.add(record.getDepartureIcao());
             if (record.getArrivalIcao() != null) airportCodes.add(record.getArrivalIcao());
         });
-        Map<String, Airport> airportIndex = airportCodes.isEmpty() ? Map.of() :
-                airportMapper.selectBatchIds(airportCodes).stream()
-                        .collect(java.util.stream.Collectors.toMap(Airport::getIcao, airport -> airport));
+        Map<String, GeoAirport> airportIndex = geoReferenceClient.airportsByIcao(airportCodes);
 
         for (FlightRecord f : list) {
             Map<String, Object> item = new HashMap<>();
@@ -256,15 +247,15 @@ public class TicketStatisticsService {
             item.put("To", f.getArrivalIcao());
             item.put("time", calculateDuration(f.getTakeoffTime(), f.getLandingTime()));
             item.put("Time", f.getTakeoffTime());
-            Airport fromAirport = airportIndex.get(f.getDepartureIcao());
-            Airport toAirport = airportIndex.get(f.getArrivalIcao());
+            GeoAirport fromAirport = airportIndex.get(f.getDepartureIcao());
+            GeoAirport toAirport = airportIndex.get(f.getArrivalIcao());
             if (fromAirport != null) {
-                item.put("fromLongitude", fromAirport.getLongitude());
-                item.put("fromLatitude", fromAirport.getLatitude());
+                item.put("fromLongitude", fromAirport.longitude());
+                item.put("fromLatitude", fromAirport.latitude());
             }
             if (toAirport != null) {
-                item.put("toLongitude", toAirport.getLongitude());
-                item.put("toLatitude", toAirport.getLatitude());
+                item.put("toLongitude", toAirport.longitude());
+                item.put("toLatitude", toAirport.latitude());
             }
 
             more.add(Map.of("label", "起飞时间", "value", formatTime(f.getTakeoffTime())));
