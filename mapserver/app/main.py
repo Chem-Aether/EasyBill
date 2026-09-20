@@ -1,9 +1,10 @@
+import uvicorn
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 
-from .config import MAP_FILES
-from .responses import payload
+from .config import HOST, MAP_FILES, PORT
+from .utils.responses import payload
 from .routers import catalog, geocoding, regions
 
 
@@ -34,3 +35,7 @@ def map_archive(archive: str):
     if not path or not path.is_file():
         raise HTTPException(404, "Map archive not found")
     return FileResponse(path, media_type="application/octet-stream", headers={"Cache-Control": "public, max-age=3600"})
+
+
+if __name__ == "__main__":
+    uvicorn.run("app.main:app", host=HOST, port=PORT)

@@ -18,8 +18,13 @@
           :label="item.name"
           :value="item.id"
         >
-          <span>{{ item.name }}</span>
-          <span class="poi-kind">{{ item.kind }}</span>
+          <div class="poi-option">
+            <span class="poi-main">
+              <span class="poi-name">{{ item.name }}</span>
+              <span v-if="item.kind" class="poi-kind">{{ item.kind }}</span>
+            </span>
+            <span class="poi-region" :title="item.fullName">{{ item.fullName || '行政区未知' }}</span>
+          </div>
         </el-option>
       </el-select>
     </div>
@@ -204,7 +209,11 @@ onBeforeUnmount(() => {
 .picker-shell { border: 1px solid #d7dde5; background: #f6f8fa; }
 .poi-search { padding: 10px; border-bottom: 1px solid #d7dde5; background: #fff; }
 .poi-search :deep(.el-select) { width: 100%; }
-.poi-kind { float: right; margin-left: 16px; color: #98a2b3; font-size: 12px; }
+.poi-option { width: 100%; display: flex; align-items: center; gap: 16px; }
+.poi-main { min-width: 0; display: flex; align-items: baseline; gap: 8px; }
+.poi-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.poi-kind { flex: none; color: #98a2b3; font-size: 12px; }
+.poi-region { min-width: 130px; margin-left: auto; overflow: hidden; color: #667085; font-size: 12px; text-align: right; text-overflow: ellipsis; white-space: nowrap; }
 .picker-map { width: 100%; height: 330px; }
 .picker-status { min-height: 38px; padding: 0 12px; display: flex; align-items: center; justify-content: space-between; color: #52606d; font-size: 13px; font-variant-numeric: tabular-nums; }
 :deep(.maplibregl-ctrl-group) { border-radius: 4px; }

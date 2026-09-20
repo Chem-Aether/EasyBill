@@ -14,6 +14,15 @@ def test_geocoding_and_boundaries():
     forward = client.get("/api/geocode/forward", params={"q": "中山陵", "type": "poi", "limit": 2})
     assert forward.status_code == 200
     assert forward.json()["data"][0]["name"] == "中山陵"
+    assert forward.json()["data"][0]["region"]["formattedRegion"]
+
+    partial = client.get("/api/geocode/forward", params={"q": "中山", "type": "poi", "limit": 5})
+    assert partial.status_code == 200
+    assert any("中山" in item["name"] for item in partial.json()["data"])
+
+    multiple_terms = client.get("/api/geocode/forward", params={"q": "南京 博物院", "type": "poi", "limit": 5})
+    assert multiple_terms.status_code == 200
+    assert any("博物" in item["name"] for item in multiple_terms.json()["data"])
 
     boundary = client.post("/api/regions/boundaries/by-codes", json={"codes": ["3201"]})
     assert boundary.status_code == 200

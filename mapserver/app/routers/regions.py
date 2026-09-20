@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, Query
 
-from ..models import ValuesRequest
-from ..responses import geojson, payload
+from ..utils.models import ValuesRequest
+from ..utils.responses import geojson, payload
 from ..services import regions
 
 

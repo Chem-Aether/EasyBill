@@ -1,7 +1,7 @@
 import sqlite3
 import threading
 
-from .config import DATABASE_PATH
+from ..config import DATABASE_PATH
 
 
 _local = threading.local()

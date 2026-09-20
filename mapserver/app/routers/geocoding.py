@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, Query
 
-from ..models import PointsRequest
-from ..responses import payload
+from ..utils.models import PointsRequest
+from ..utils.responses import payload
 from ..services import catalog, regions
 
 

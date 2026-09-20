@@ -1,8 +1,8 @@
 import json
 from functools import lru_cache
 
-from ..database import all_rows, one
-from ..geometry import contains, representative_point
+from ..utils.database import all_rows, one
+from ..utils.geometry import contains, representative_point
 
 
 BOUNDARY_FIELDS = """

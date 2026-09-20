@@ -1,8 +1,8 @@
 from fastapi import APIRouter, HTTPException, Query
 
-from ..database import all_rows, one
-from ..models import NamesRequest, ValuesRequest
-from ..responses import payload
+from ..utils.database import all_rows, one
+from ..utils.models import NamesRequest, ValuesRequest
+from ..utils.responses import payload
 from ..services import catalog
 
 
