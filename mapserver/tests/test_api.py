@@ -1,6 +1,9 @@
 from fastapi.testclient import TestClient
+import math
 
-from app.main import app
+import mapbox_vector_tile
+
+from main import app
 
 
 client = TestClient(app)
@@ -30,7 +33,31 @@ def test_geocoding_and_boundaries():
     assert boundary.json()["type"] == "FeatureCollection"
 
 
-def test_pmtiles_range_request():
-    response = client.get("/world.pmtiles", headers={"Range": "bytes=0-127"})
-    assert response.status_code == 206
-    assert len(response.content) == 128
+def _tile_at(longitude, latitude, zoom):
+    x = int((longitude + 180) / 360 * (1 << zoom))
+    y = int((1 - math.asinh(math.tan(math.radians(latitude))) / math.pi) / 2 * (1 << zoom))
+    return zoom, x, y
+
+
+def test_unified_tile_gateway_selects_sources_and_overzooms():
+    tilejson = client.get("/api/tiles/tilejson.json")
+    assert tilejson.status_code == 200
+    assert tilejson.json()["tiles"][0].endswith("/api/tiles/{z}/{x}/{y}.mvt")
+
+    world = client.get("/api/tiles/0/0/0.mvt")
+    assert world.status_code == 200
+    assert world.headers["x-map-source"] == "world"
+    assert world.headers["x-map-overzoom"] == "false"
+
+    z, x, y = _tile_at(118.8, 32.0, 14)
+    china = client.get(f"/api/tiles/{z}/{x}/{y}.mvt")
+    assert china.status_code == 200
+    assert china.headers["x-map-source"] == "china"
+
+    z, x, y = _tile_at(118.8, 32.0, 15)
+    overzoom = client.get(f"/api/tiles/{z}/{x}/{y}.mvt")
+    assert overzoom.status_code == 200
+    assert overzoom.headers["x-map-source"] == "china"
+    assert overzoom.headers["x-map-overzoom"] == "true"
+    decoded = mapbox_vector_tile.decode(overzoom.content)
+    assert isinstance(decoded, dict)

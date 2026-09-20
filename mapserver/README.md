@@ -1,17 +1,20 @@
 # EastBill 离线地理信息服务
 
-独立的 Python/FastAPI 服务，统一提供 PMTiles、机场、车站、POI、行政区边界和地理编码。业务前后端只依赖 HTTP 接口，不直接读取地理数据文件。
+独立的 Python/FastAPI 服务，统一提供矢量瓦片、机场、车站、POI、行政区边界和地理编码。业务前后端只依赖 HTTP 接口，不直接读取地理数据文件。
 
 ## 工程结构
 
 ```text
 mapserver/
+├─ main.py                    服务启动入口
 ├─ app/
-│  ├─ main.py                 FastAPI 应用和启动入口
-│  ├─ config.py               环境变量及数据路径
+│  ├─ settings.py             JSON 配置加载与环境变量覆盖
 │  ├─ routers/                HTTP 路由
 │  ├─ services/               查询与地理编码逻辑
+│  ├─ tiles/                  PMTiles 选源、读取、overzoom 和缓存
 │  └─ utils/                  数据库、几何算法、模型与响应
+├─ config/
+│  └─ application.json        服务、存储、CORS 和地图数据源配置
 ├─ scripts/
 │  ├─ import_osm_poi.py       OSM PBF → POI/FTS/RTree
 │  └─ import_region_boundaries.py  GeoJSON → 行政区/RTree
@@ -38,7 +41,7 @@ python -m venv .venv
 ## 启动
 
 ```powershell
-.\.venv\Scripts\python.exe -m app.main
+.\.venv\Scripts\python.exe main.py
 ```
 
 默认地址为 `http://127.0.0.1:8765`，交互式接口文档为 `http://127.0.0.1:8765/docs`。
@@ -50,7 +53,18 @@ $env:MAP_HOST = '127.0.0.1'
 $env:MAP_PORT = '8765'
 $env:MAP_DATA_DIR = 'D:\geo-data'
 $env:MAP_DATABASE = 'D:\geo-data\geo.sqlite'
+$env:MAP_CONFIG = 'D:\geo-config\application.json'
+$env:MAP_TILE_CACHE_SIZE = '512'
 ```
+
+## 地图瓦片
+
+前端只使用一个 TileJSON 地址：`GET /api/tiles/tilejson.json`。瓦片请求统一进入
+`GET /api/tiles/{z}/{x}/{y}.mvt`，服务按经纬度、缩放级别和 `config/application.json`
+中的优先级选择 PMTiles。当前 Z0-Z6 使用全球库，中国区域 Z7-Z14 使用中国库；请求超过数据源最高层级时，服务会裁剪并重编码最近的父级矢量瓦片。
+
+增加新的国家或城市地图时，将 PMTiles 放进数据目录，在 `config/application.json` 的 `tiles.sources` 中增加数据源，随后调用
+`POST /api/admin/maps/reload` 即可，不需要修改前端。
 
 ## 数据更新
 
@@ -74,8 +88,11 @@ $env:MAP_DATABASE = 'D:\geo-data\geo.sqlite'
 
 完整定义以 `/docs` 和 `/openapi.json` 为准。主要接口：
 
-- `GET /world.pmtiles`
-- `GET /china.pmtiles`
+- `GET /api/tiles/tilejson.json`
+- `GET /api/tiles/{z}/{x}/{y}.mvt`
+- `GET /api/maps/catalog`
+- `GET /api/maps/status`
+- `POST /api/admin/maps/reload`
 - `GET /api/geocode/forward`
 - `GET /api/geocode/reverse`
 - `POST /api/geocode/reverse/batch`

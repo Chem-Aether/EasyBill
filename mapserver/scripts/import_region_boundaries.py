@@ -7,6 +7,15 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from app.settings import (
+    BOUNDARY_SOURCE_DIR,
+    CITY_BOUNDARY_FILE,
+    DATABASE_PATH,
+    DISTRICT_BOUNDARY_FILE,
+    PROVINCE_BOUNDARY_FILE,
+)
+
 
 DIRECT_MUNICIPALITIES = {"11", "12", "31", "50"}
 
@@ -89,13 +98,11 @@ def create_schema(connection):
 
 
 def main():
-    root = Path(__file__).resolve().parent.parent
-    source = root / "data" / "source" / "boundaries"
     parser = argparse.ArgumentParser(description="将省市县 GeoJSON 导入 geo.sqlite 并构建行政区 RTree")
-    parser.add_argument("--province", type=Path, default=source / "china.json")
-    parser.add_argument("--city", type=Path, default=source / "中国_市.json")
-    parser.add_argument("--district", type=Path, default=source / "中国_县.json")
-    parser.add_argument("--database", type=Path, default=root / "data" / "geo.sqlite")
+    parser.add_argument("--province", type=Path, default=BOUNDARY_SOURCE_DIR / PROVINCE_BOUNDARY_FILE)
+    parser.add_argument("--city", type=Path, default=BOUNDARY_SOURCE_DIR / CITY_BOUNDARY_FILE)
+    parser.add_argument("--district", type=Path, default=BOUNDARY_SOURCE_DIR / DISTRICT_BOUNDARY_FILE)
+    parser.add_argument("--database", type=Path, default=DATABASE_PATH)
     parser.add_argument("--version", default=datetime.now(timezone.utc).date().isoformat())
     args = parser.parse_args()
     for path in (args.province, args.city, args.district, args.database):

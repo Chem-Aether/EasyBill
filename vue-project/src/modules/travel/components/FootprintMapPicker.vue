@@ -42,7 +42,6 @@
 <script setup>
 import { nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import * as maplibregl from 'maplibre-gl'
-import { Protocol } from 'pmtiles'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import { forwardGeocode, reverseGeocode } from '@/modules/travel/apis/sysResource.js'
 
@@ -60,17 +59,17 @@ let map
 let marker
 let searchRequestId = 0
 
-function vectorLayers(source, prefix, minzoom = 0) {
+function vectorLayers(source, prefix) {
   const textName = ['coalesce', ['get', 'name:zh-Hans'], ['get', 'name']]
   return [
-    { id: `${prefix}-earth`, type: 'fill', source, 'source-layer': 'earth', minzoom, paint: { 'fill-color': '#e8edf0' } },
-    { id: `${prefix}-landuse`, type: 'fill', source, 'source-layer': 'landuse', minzoom: Math.max(3, minzoom), paint: { 'fill-color': ['match', ['get', 'kind'], ['park', 'forest', 'nature_reserve'], '#cfe5d4', '#e2e8e5'], 'fill-opacity': 0.8 } },
-    { id: `${prefix}-water`, type: 'fill', source, 'source-layer': 'water', minzoom, paint: { 'fill-color': '#b7dceb' } },
-    { id: `${prefix}-boundaries`, type: 'line', source, 'source-layer': 'boundaries', minzoom, paint: { 'line-color': '#82939d', 'line-width': 0.7 } },
-    { id: `${prefix}-roads`, type: 'line', source, 'source-layer': 'roads', minzoom: Math.max(5, minzoom), paint: { 'line-color': ['match', ['get', 'kind'], ['highway', 'major_road'], '#d3a85f', '#bbc3c5'], 'line-width': ['interpolate', ['linear'], ['zoom'], 5, 0.4, 14, 3.5] } },
-    { id: `${prefix}-poi-labels`, type: 'symbol', source, 'source-layer': 'pois', minzoom: Math.max(5, minzoom), layout: { 'text-field': textName, 'text-size': 11, 'text-offset': [0, 0.8], 'text-anchor': 'top', 'text-optional': true }, paint: { 'text-color': '#3f5158', 'text-halo-color': '#f4f7f7', 'text-halo-width': 1.2 } },
-    { id: `${prefix}-road-labels`, type: 'symbol', source, 'source-layer': 'roads', minzoom: Math.max(11, minzoom), layout: { 'symbol-placement': 'line', 'text-field': textName, 'text-size': 11 }, paint: { 'text-color': '#46565c', 'text-halo-color': '#f4f7f7', 'text-halo-width': 1.3 } },
-    { id: `${prefix}-place-labels`, type: 'symbol', source, 'source-layer': 'places', minzoom: Math.max(2, minzoom), layout: { 'text-field': textName, 'text-size': ['interpolate', ['linear'], ['zoom'], 2, 10, 10, 14] }, paint: { 'text-color': '#263a42', 'text-halo-color': '#f4f7f7', 'text-halo-width': 1.4 } }
+    { id: `${prefix}-earth`, type: 'fill', source, 'source-layer': 'earth', paint: { 'fill-color': '#e8edf0' } },
+    { id: `${prefix}-landuse`, type: 'fill', source, 'source-layer': 'landuse', minzoom: 3, paint: { 'fill-color': ['match', ['get', 'kind'], ['park', 'forest', 'nature_reserve'], '#cfe5d4', '#e2e8e5'], 'fill-opacity': 0.8 } },
+    { id: `${prefix}-water`, type: 'fill', source, 'source-layer': 'water', paint: { 'fill-color': '#b7dceb' } },
+    { id: `${prefix}-boundaries`, type: 'line', source, 'source-layer': 'boundaries', paint: { 'line-color': '#82939d', 'line-width': 0.7 } },
+    { id: `${prefix}-roads`, type: 'line', source, 'source-layer': 'roads', minzoom: 5, paint: { 'line-color': ['match', ['get', 'kind'], ['highway', 'major_road'], '#d3a85f', '#bbc3c5'], 'line-width': ['interpolate', ['linear'], ['zoom'], 5, 0.4, 14, 3.5] } },
+    { id: `${prefix}-poi-labels`, type: 'symbol', source, 'source-layer': 'pois', minzoom: 5, layout: { 'text-field': textName, 'text-size': 11, 'text-offset': [0, 0.8], 'text-anchor': 'top', 'text-optional': true }, paint: { 'text-color': '#3f5158', 'text-halo-color': '#f4f7f7', 'text-halo-width': 1.2 } },
+    { id: `${prefix}-road-labels`, type: 'symbol', source, 'source-layer': 'roads', minzoom: 11, layout: { 'symbol-placement': 'line', 'text-field': textName, 'text-size': 11 }, paint: { 'text-color': '#46565c', 'text-halo-color': '#f4f7f7', 'text-halo-width': 1.3 } },
+    { id: `${prefix}-place-labels`, type: 'symbol', source, 'source-layer': 'places', minzoom: 2, layout: { 'text-field': textName, 'text-size': ['interpolate', ['linear'], ['zoom'], 2, 10, 10, 14] }, paint: { 'text-color': '#263a42', 'text-halo-color': '#f4f7f7', 'text-halo-width': 1.4 } }
   ]
 }
 
@@ -78,13 +77,11 @@ function createStyle() {
   return {
     version: 8,
     sources: {
-      world: { type: 'vector', url: `pmtiles://${MAP_SERVER}/world.pmtiles` },
-      china: { type: 'vector', url: `pmtiles://${MAP_SERVER}/china.pmtiles` }
+      basemap: { type: 'vector', url: `${MAP_SERVER}/api/tiles/tilejson.json` }
     },
     layers: [
       { id: 'picker-background', type: 'background', paint: { 'background-color': '#e8edf0' } },
-      ...vectorLayers('world', 'picker-world'),
-      ...vectorLayers('china', 'picker-china', 6.5)
+      ...vectorLayers('basemap', 'picker-basemap')
     ]
   }
 }
@@ -169,8 +166,6 @@ function clearPoint() {
 
 onMounted(async () => {
   await nextTick()
-  const protocol = new Protocol()
-  maplibregl.addProtocol('pmtiles', protocol.tile)
   const hasPoint = props.longitude != null && props.latitude != null
   map = new maplibregl.Map({
     container: mapContainer.value,
@@ -201,7 +196,6 @@ watch(() => [props.longitude, props.latitude], ([longitude, latitude]) => {
 onBeforeUnmount(() => {
   marker?.remove()
   map?.remove()
-  maplibregl.removeProtocol('pmtiles')
 })
 </script>
 

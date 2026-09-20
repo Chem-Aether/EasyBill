@@ -13,7 +13,6 @@
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import * as maplibregl from 'maplibre-gl'
-import { Protocol } from 'pmtiles'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import { getFootprints, getTicketData, getVisitedCityCodes } from '@/modules/travel/apis/travel.js'
 import { getRegionBoundaries } from '@/modules/travel/apis/sysResource.js'
@@ -35,24 +34,24 @@ let lastPlaneFrame = 0
 let trainAnimationFrame = 0
 let lastTrainFrame = 0
 
-function baseLayers(source, prefix, minzoom = 0) {
+function baseLayers(source, prefix) {
   const textName = ['coalesce', ['get', 'name:zh-Hans'], ['get', 'name']]
   return [
-    { id: `${prefix}-earth`, type: 'fill', source, 'source-layer': 'earth', minzoom, paint: { 'fill-color': '#081522' } },
-    { id: `${prefix}-landuse`, type: 'fill', source, 'source-layer': 'landuse', minzoom: Math.max(2, minzoom), paint: { 'fill-color': ['match', ['get', 'kind'], ['park', 'forest', 'nature_reserve'], '#123a35', '#101f2b'], 'fill-opacity': 0.8 } },
-    { id: `${prefix}-water`, type: 'fill', source, 'source-layer': 'water', minzoom, paint: { 'fill-color': '#07101d' } },
-    { id: `${prefix}-boundaries`, type: 'line', source, 'source-layer': 'boundaries', minzoom, paint: { 'line-color': '#39708a', 'line-width': ['interpolate', ['linear'], ['zoom'], 2, 0.35, 10, 1.1], 'line-opacity': 0.7 } },
-    { id: `${prefix}-roads-casing`, type: 'line', source, 'source-layer': 'roads', minzoom: Math.max(4, minzoom), filter: ['!=', ['get', 'kind'], 'rail'], paint: { 'line-color': '#050c13', 'line-width': ['interpolate', ['linear'], ['zoom'], 5, 1.1, 14, 7] } },
-    { id: `${prefix}-roads`, type: 'line', source, 'source-layer': 'roads', minzoom: Math.max(4, minzoom), filter: ['!=', ['get', 'kind'], 'rail'], paint: { 'line-color': ['match', ['get', 'kind'], ['highway', 'major_road'], '#75633f', '#3f5662'], 'line-width': ['interpolate', ['linear'], ['zoom'], 5, 0.45, 14, 4.2], 'line-opacity': 0.3 } },
-    { id: `${prefix}-buildings`, type: 'fill', source, 'source-layer': 'buildings', minzoom: Math.max(12, minzoom), paint: { 'fill-color': '#263c49', 'fill-outline-color': '#3f5965' } },
-    { id: `${prefix}-road-labels`, type: 'symbol', source, 'source-layer': 'roads', minzoom: Math.max(11, minzoom), layout: { 'symbol-placement': 'line', 'text-field': textName, 'text-size': 11 }, paint: { 'text-color': '#c6d3d7', 'text-halo-color': '#071019', 'text-halo-width': 1.4 } },
-    { id: `${prefix}-place-labels`, type: 'symbol', source, 'source-layer': 'places', minzoom: Math.max(2, minzoom), layout: { 'text-field': textName, 'text-size': ['interpolate', ['linear'], ['zoom'], 2, 10, 9, 15] }, paint: { 'text-color': '#dce9ec', 'text-halo-color': '#071019', 'text-halo-width': 1.6 } },
+    { id: `${prefix}-earth`, type: 'fill', source, 'source-layer': 'earth', paint: { 'fill-color': '#081522' } },
+    { id: `${prefix}-landuse`, type: 'fill', source, 'source-layer': 'landuse', minzoom: 2, paint: { 'fill-color': ['match', ['get', 'kind'], ['park', 'forest', 'nature_reserve'], '#123a35', '#101f2b'], 'fill-opacity': 0.8 } },
+    { id: `${prefix}-water`, type: 'fill', source, 'source-layer': 'water', paint: { 'fill-color': '#07101d' } },
+    { id: `${prefix}-boundaries`, type: 'line', source, 'source-layer': 'boundaries', paint: { 'line-color': '#39708a', 'line-width': ['interpolate', ['linear'], ['zoom'], 2, 0.35, 10, 1.1], 'line-opacity': 0.7 } },
+    { id: `${prefix}-roads-casing`, type: 'line', source, 'source-layer': 'roads', minzoom: 4, filter: ['!=', ['get', 'kind'], 'rail'], paint: { 'line-color': '#050c13', 'line-width': ['interpolate', ['linear'], ['zoom'], 5, 1.1, 14, 7] } },
+    { id: `${prefix}-roads`, type: 'line', source, 'source-layer': 'roads', minzoom: 4, filter: ['!=', ['get', 'kind'], 'rail'], paint: { 'line-color': ['match', ['get', 'kind'], ['highway', 'major_road'], '#75633f', '#3f5662'], 'line-width': ['interpolate', ['linear'], ['zoom'], 5, 0.45, 14, 4.2], 'line-opacity': 0.3 } },
+    { id: `${prefix}-buildings`, type: 'fill', source, 'source-layer': 'buildings', minzoom: 12, paint: { 'fill-color': '#263c49', 'fill-outline-color': '#3f5965' } },
+    { id: `${prefix}-road-labels`, type: 'symbol', source, 'source-layer': 'roads', minzoom: 11, layout: { 'symbol-placement': 'line', 'text-field': textName, 'text-size': 11 }, paint: { 'text-color': '#c6d3d7', 'text-halo-color': '#071019', 'text-halo-width': 1.4 } },
+    { id: `${prefix}-place-labels`, type: 'symbol', source, 'source-layer': 'places', minzoom: 2, layout: { 'text-field': textName, 'text-size': ['interpolate', ['linear'], ['zoom'], 2, 10, 9, 15] }, paint: { 'text-color': '#dce9ec', 'text-halo-color': '#071019', 'text-halo-width': 1.6 } },
     {
       id: `${prefix}-railways`,
       type: 'line',
       source,
       'source-layer': 'roads',
-      minzoom: Math.max(1, minzoom),
+      minzoom: 1,
       filter: ['==', ['get', 'kind'], 'rail'], paint: {
         'line-color': '#e05a5a',
         'line-width': ['interpolate', ['linear'], ['zoom'], 5, 0.6, 10, 1.5, 14, 4],
@@ -67,13 +66,11 @@ function createStyle() {
   return {
     version: 8,
     sources: {
-      world: { type: 'vector', url: `pmtiles://${MAP_SERVER}/world.pmtiles`, attribution: '© OpenStreetMap contributors' },
-      china: { type: 'vector', url: `pmtiles://${MAP_SERVER}/china.pmtiles`, attribution: '© OpenStreetMap contributors' },
+      basemap: { type: 'vector', url: `${MAP_SERVER}/api/tiles/tilejson.json`, attribution: '© OpenStreetMap contributors' },
     },
     layers: [
       { id: 'background', type: 'background', paint: { 'background-color': '#07101d' } },
-      ...baseLayers('world', 'world'),
-      ...baseLayers('china', 'china', 6.5),
+      ...baseLayers('basemap', 'basemap'),
     ],
   }
 }
@@ -412,8 +409,6 @@ async function loadTravelData() {
 }
 
 onMounted(async () => {
-  const protocol = new Protocol()
-  maplibregl.addProtocol('pmtiles', protocol.tile)
   map = new maplibregl.Map({
     container: mapContainer.value,
     style: createStyle(),
@@ -446,7 +441,6 @@ onBeforeUnmount(() => {
   stopTrainAnimation()
   popup?.remove()
   map?.remove()
-  maplibregl.removeProtocol('pmtiles')
 })
 </script>
 

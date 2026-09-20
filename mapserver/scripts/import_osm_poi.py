@@ -10,6 +10,9 @@ from pathlib import Path
 
 import osmium
 
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from app.settings import DATABASE_PATH, OSM_SOURCE_DIR
+
 
 TOURISM = {
     "attraction": "attraction", "museum": "museum", "gallery": "museum",
@@ -227,14 +230,12 @@ def build_indexes(connection):
 
 
 def main():
-    root = Path(__file__).resolve().parent.parent
-    source = root / "data" / "source" / "osm"
     parser = argparse.ArgumentParser(description="从中国 OSM PBF 构建离线景点 POI 数据库")
     parser.add_argument("pbf", type=Path, nargs="?", help="china-*.osm.pbf 路径；省略时自动选择目录中最新文件")
-    parser.add_argument("--database", type=Path, default=root / "data" / "geo.sqlite")
+    parser.add_argument("--database", type=Path, default=DATABASE_PATH)
     args = parser.parse_args()
     if args.pbf is None:
-        candidates = sorted(source.glob("china-*.osm.pbf"))
+        candidates = sorted(OSM_SOURCE_DIR.glob("china-*.osm.pbf"))
         args.pbf = candidates[-1] if candidates else None
     if args.pbf is None or not args.pbf.is_file():
         parser.error(f"PBF 不存在: {args.pbf}")
