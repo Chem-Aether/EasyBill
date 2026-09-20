@@ -68,32 +68,10 @@
             @clear="clearMapPoint"
           />
         </el-form-item>
-        <el-form-item v-if="form.adcode && !manualRegionVisible" label="所属地区">
+        <el-form-item label="所属地区" required>
           <div class="region-result">
-            <span>{{ selectedRegionName }}</span>
-            <el-button link type="primary" @click="manualRegionVisible = true">更正</el-button>
+            <span>{{ selectedRegionName || '选点后自动识别' }}</span>
           </div>
-        </el-form-item>
-        <el-form-item v-else label="所属地区" required>
-          <el-select
-            v-model="form.adcode"
-            filterable
-            remote
-            clearable
-            reserve-keyword
-            :remote-method="queryRegions"
-            :loading="regionLoading"
-            placeholder="输入区县名称，如 西湖"
-            style="width: 100%"
-            @change="handleRegionChange"
-          >
-            <el-option
-              v-for="item in regionOptions"
-              :key="item.code"
-              :label="item.fullName"
-              :value="item.code"
-            />
-          </el-select>
         </el-form-item>
         <div class="field-grid">
           <el-form-item label="地点名称" required>
@@ -134,19 +112,16 @@
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { addFootprint, deleteFootprint, getFootprints, updateFootprint } from '@/modules/travel/apis/travel.js'
-import { searchRegions } from '@/modules/travel/apis/sysResource.js'
 import FootprintMapPicker from '@/modules/travel/components/FootprintMapPicker.vue'
 
 const rows = ref([])
 const loading = ref(false)
 const saving = ref(false)
-const regionLoading = ref(false)
 const filterText = ref('')
 const currentPage = ref(1)
 const pageSize = ref(10)
 const sortState = reactive({ prop: 'visitTime', order: 'descending' })
 const dialogVisible = ref(false)
-const manualRegionVisible = ref(false)
 const regionOptions = ref([])
 const spotTypes = ['景点', '商业街', '交通枢纽', '校园', '机场', '公园', '街道', '区域', '其他']
 const form = reactive({
@@ -220,10 +195,6 @@ function handlePageSizeChange() {
   currentPage.value = 1
 }
 
-function handleRegionChange(code) {
-  if (code) manualRegionVisible.value = false
-}
-
 function resetForm() {
   Object.assign(form, {
     spotId: null,
@@ -236,7 +207,6 @@ function resetForm() {
     address: ''
   })
   regionOptions.value = []
-  manualRegionVisible.value = false
 }
 
 function openCreate() {
@@ -256,24 +226,7 @@ function openEdit(row) {
     address: row.address || ''
   })
   regionOptions.value = [{ code: row.adcode, fullName: row.regionName }]
-  manualRegionVisible.value = !row.adcode
   dialogVisible.value = true
-}
-
-async function queryRegions(keyword) {
-  if (!keyword?.trim()) {
-    regionOptions.value = []
-    return
-  }
-  regionLoading.value = true
-  try {
-    const res = await searchRegions(keyword.trim(), 3)
-    regionOptions.value = res.data || []
-  } catch {
-    regionOptions.value = []
-  } finally {
-    regionLoading.value = false
-  }
 }
 
 async function handleMapPick(point) {
@@ -283,28 +236,22 @@ async function handleMapPick(point) {
     form.spotName = point.suggestedName
   }
   if (!point.adcode) {
-    manualRegionVisible.value = true
-    ElMessage.info('已记录坐标；该位置未匹配到中国区县，请手动选择行政区')
+    form.adcode = ''
+    regionOptions.value = []
+    ElMessage.warning('该坐标未匹配到区县，请重新选点')
     return
   }
 
   form.adcode = point.adcode
-  manualRegionVisible.value = false
-  try {
-    const res = await searchRegions(point.districtName, 3)
-    const matched = (res.data || []).find(item => item.code === point.adcode)
-    regionOptions.value = matched
-      ? [matched]
-      : [{ code: point.adcode, fullName: point.districtName || point.adcode }]
-  } catch {
-    regionOptions.value = [{ code: point.adcode, fullName: point.districtName || point.adcode }]
-  }
+  regionOptions.value = [{ code: point.adcode, fullName: point.fullName || point.districtName || point.adcode }]
   ElMessage.success(`已自动识别：${regionOptions.value[0].fullName}`)
 }
 
 function clearMapPoint() {
   form.longitude = null
   form.latitude = null
+  form.adcode = ''
+  regionOptions.value = []
 }
 
 async function save() {

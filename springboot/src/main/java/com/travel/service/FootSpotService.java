@@ -111,23 +111,14 @@ public class FootSpotService {
         return result;
     }
 
-    public List<String> getVisitedCities() {
-        // 1. 获取所有足迹
+    public List<String> getVisitedCityCodes() {
         List<FootSpot> list = footSpotMapper.selectList(null);
         if (list.isEmpty()) return new ArrayList<>();
-
-        // 2. 提取所有 adcode，并取出【城市级别的 code】
-        Set<String> cityCodeSet = list.stream()
+        return list.stream()
                 .map(FootSpot::getAdcode)
-                .map(this::getCityCode) // 核心：自动获取市级code
-                .collect(Collectors.toSet());
-
-        // 3. 根据城市code批量查询名称
-        Map<String, GeoRegion> cityIndex = geoReferenceClient.regionsByCode(cityCodeSet);
-
-        // 4. 返回名称
-        return cityIndex.values().stream()
-                .map(GeoRegion::name)
+                .filter(Objects::nonNull)
+                .map(this::getCityCode)
+                .filter(Objects::nonNull)
                 .distinct()
                 .collect(Collectors.toList());
     }
@@ -149,30 +140,28 @@ public class FootSpotService {
     }
 
     private void validate(FootSpot spot) {
-        if (spot == null || spot.getAdcode() == null || spot.getAdcode().isBlank()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "请选择区县");
-        }
-        GeoRegion region = geoReferenceClient.regionByCode(spot.getAdcode());
-        if (region == null || !Objects.equals(region.level(), 3)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "请选择有效的区县级行政区");
-        }
+        if (spot == null) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "足迹数据不能为空");
         if (spot.getSpotName() == null || spot.getSpotName().isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "地点名称不能为空");
         }
         if (spot.getSpotType() == null || spot.getSpotType().isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "地点类型不能为空");
         }
-        if ((spot.getLongitude() == null) != (spot.getLatitude() == null)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "经纬度必须同时填写");
+        if (spot.getLongitude() == null || spot.getLatitude() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "请在地图上选择地点");
         }
-        if (spot.getLongitude() != null &&
-                (spot.getLongitude().doubleValue() < -180 || spot.getLongitude().doubleValue() > 180)) {
+        if (spot.getLongitude().doubleValue() < -180 || spot.getLongitude().doubleValue() > 180) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "经度必须在 -180 到 180 之间");
         }
-        if (spot.getLatitude() != null &&
-                (spot.getLatitude().doubleValue() < -90 || spot.getLatitude().doubleValue() > 90)) {
+        if (spot.getLatitude().doubleValue() < -90 || spot.getLatitude().doubleValue() > 90) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "纬度必须在 -90 到 90 之间");
         }
+        GeoReferenceClient.GeoLocation location = geoReferenceClient.reverseGeocode(
+                spot.getLongitude().doubleValue(), spot.getLatitude().doubleValue());
+        if (location == null || location.district() == null || location.district().code() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "该坐标未匹配到区县级行政区");
+        }
+        spot.setAdcode(location.district().code());
     }
 
 }

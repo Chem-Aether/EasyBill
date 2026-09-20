@@ -51,10 +51,12 @@ public class GeoReferenceClient {
         return data(response).stream().collect(Collectors.toMap(GeoRegion::code, Function.identity(), (left, right) -> left));
     }
 
-    public GeoRegion regionByCode(String code) {
-        if (code == null || code.isBlank()) return null;
-        ApiResponse<GeoRegion> response = restClient.get()
-                .uri("/api/regions/{code}", code)
+    public GeoLocation reverseGeocode(double longitude, double latitude) {
+        ApiResponse<GeoLocation> response = restClient.get()
+                .uri(builder -> builder.path("/api/geocode/reverse")
+                        .queryParam("longitude", longitude)
+                        .queryParam("latitude", latitude)
+                        .build())
                 .retrieve()
                 .body(new ParameterizedTypeReference<>() {});
         return response == null ? null : response.data();
@@ -72,6 +74,9 @@ public class GeoReferenceClient {
 
     public record GeoRegion(String code, String name, Integer level, String type, String parentCode,
                             String fullName) {}
+
+    public record GeoLocation(Double longitude, Double latitude, GeoRegion province, GeoRegion city,
+                              GeoRegion district, String formattedRegion, String dataVersion) {}
 
     private record ApiResponse<T>(String msg, T data) {}
 }

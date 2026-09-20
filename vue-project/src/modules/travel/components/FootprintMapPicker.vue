@@ -9,7 +9,7 @@
         reserve-keyword
         :remote-method="searchPois"
         :loading="poiLoading"
-        placeholder="移动到目标城市后，搜索当前地图范围内的景点"
+        placeholder="搜索全国景点或打卡点"
         @change="selectPoi"
       >
         <el-option
@@ -39,7 +39,7 @@ import { nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import * as maplibregl from 'maplibre-gl'
 import { Protocol } from 'pmtiles'
 import 'maplibre-gl/dist/maplibre-gl.css'
-import countyGeoJson from '@/assets/中国_县.json'
+import { forwardGeocode, reverseGeocode } from '@/modules/travel/apis/sysResource.js'
 
 const props = defineProps({
   longitude: { type: Number, default: null },
@@ -53,6 +53,7 @@ const poiOptions = ref([])
 const poiLoading = ref(false)
 let map
 let marker
+let searchRequestId = 0
 
 function vectorLayers(source, prefix, minzoom = 0) {
   const textName = ['coalesce', ['get', 'name:zh-Hans'], ['get', 'name']]
@@ -91,66 +92,51 @@ function setMarker(longitude, latitude, moveMap = false) {
   if (moveMap) map.flyTo({ center: coordinates, zoom: Math.max(map.getZoom(), 11) })
 }
 
-function districtFromFeature(feature) {
-  const gb = String(feature?.properties?.gb || '')
-  const adcode = gb.startsWith('156') ? gb.slice(3) : gb
-  return /^\d{6}$/.test(adcode)
-    ? { adcode, districtName: feature.properties.name || '' }
-    : { adcode: '', districtName: '' }
+async function locationAt(longitude, latitude) {
+  const response = await reverseGeocode(longitude, latitude)
+  const location = response.data
+  return {
+    adcode: location?.district?.code || '',
+    districtName: location?.district?.name || '',
+    fullName: location?.formattedRegion || ''
+  }
 }
 
-function handleMapClick(event) {
+async function handleMapClick(event) {
   const longitude = Number(event.lngLat.lng.toFixed(7))
   const latitude = Number(event.lngLat.lat.toFixed(7))
-  const feature = map.queryRenderedFeatures(event.point, { layers: ['picker-district-hit'] })[0]
-  const district = districtFromFeature(feature)
   setMarker(longitude, latitude)
-  emit('pick', { longitude, latitude, ...district })
+  try {
+    emit('pick', { longitude, latitude, ...await locationAt(longitude, latitude) })
+  } catch {
+    emit('pick', { longitude, latitude, adcode: '', districtName: '', fullName: '' })
+  }
 }
 
-function poiName(properties = {}) {
-  return properties['name:zh-Hans'] || properties.name || properties.name2 || ''
-}
-
-function searchPois(keyword) {
-  const text = keyword?.trim().toLowerCase()
-  if (!text || !map?.loaded()) {
+async function searchPois(keyword) {
+  const text = keyword?.trim()
+  if (!text) {
     poiOptions.value = []
     return
   }
-
+  const requestId = ++searchRequestId
   poiLoading.value = true
   try {
-    const rendered = map.queryRenderedFeatures({
-      layers: ['picker-china-poi-labels', 'picker-world-poi-labels']
-    })
-    const sourceFeatures = ['china', 'world'].flatMap(source => {
-      try {
-        return map.querySourceFeatures(source, { sourceLayer: 'pois' })
-      } catch {
-        return []
-      }
-    })
-    const features = [...rendered, ...sourceFeatures]
-    const seen = new Set()
-    poiOptions.value = features
-      .filter(feature => feature.geometry?.type === 'Point')
-      .map(feature => ({
-        name: poiName(feature.properties),
-        kind: feature.properties?.kind_detail || feature.properties?.kind || '',
-        coordinates: feature.geometry.coordinates
-      }))
-      .filter(item => item.name && item.name.toLowerCase().includes(text))
-      .filter(item => {
-        const key = `${item.name}-${item.coordinates.join(',')}`
-        if (seen.has(key)) return false
-        seen.add(key)
-        return true
-      })
-      .slice(0, 20)
-      .map((item, index) => ({ ...item, id: `${index}-${item.coordinates.join(',')}` }))
+    const response = await forwardGeocode(text, 'poi', 20)
+    if (requestId !== searchRequestId) return
+    poiOptions.value = (response.data || []).map(item => ({
+      id: item.id,
+      name: item.name,
+      kind: item.subcategory || item.category || '',
+      coordinates: [item.longitude, item.latitude],
+      adcode: item.region?.district?.code || '',
+      districtName: item.region?.district?.name || '',
+      fullName: item.region?.formattedRegion || ''
+    }))
+  } catch {
+    if (requestId === searchRequestId) poiOptions.value = []
   } finally {
-    poiLoading.value = false
+    if (requestId === searchRequestId) poiLoading.value = false
   }
 }
 
@@ -159,16 +145,14 @@ function selectPoi(id) {
   if (!poi) return
   const [longitude, latitude] = poi.coordinates.map(Number)
   map.flyTo({ center: [longitude, latitude], zoom: Math.max(map.getZoom(), 13) })
-  map.once('moveend', () => {
-    const point = map.project([longitude, latitude])
-    const feature = map.queryRenderedFeatures(point, { layers: ['picker-district-hit'] })[0]
-    setMarker(longitude, latitude)
-    emit('pick', {
-      longitude: Number(longitude.toFixed(7)),
-      latitude: Number(latitude.toFixed(7)),
-      ...districtFromFeature(feature),
-      suggestedName: poi.name
-    })
+  setMarker(longitude, latitude)
+  emit('pick', {
+    longitude: Number(longitude.toFixed(7)),
+    latitude: Number(latitude.toFixed(7)),
+    adcode: poi.adcode,
+    districtName: poi.districtName,
+    fullName: poi.fullName,
+    suggestedName: poi.name
   })
 }
 
@@ -195,13 +179,6 @@ onMounted(async () => {
   })
   map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right')
   map.on('load', () => {
-    map.addSource('picker-districts', { type: 'geojson', data: countyGeoJson })
-    map.addLayer({
-      id: 'picker-district-hit',
-      type: 'fill',
-      source: 'picker-districts',
-      paint: { 'fill-color': '#2f80ed', 'fill-opacity': 0.01 }
-    })
     if (hasPoint) setMarker(props.longitude, props.latitude)
   })
   map.on('click', handleMapClick)

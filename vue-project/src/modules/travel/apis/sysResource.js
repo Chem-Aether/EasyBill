@@ -11,6 +11,12 @@ export const searchAirports = keyword => geoRequest.get('/api/airports/search', 
 
 export const searchTrainStations = keyword => geoRequest.get('/api/stations/search', { params: { keyword } })
 
-export const searchRegions = (keyword, level = 3) => geoRequest.get('/api/regions/search', {
-  params: { keyword, level },
+export const forwardGeocode = (keyword, type = 'all', limit = 20) => geoRequest.get('/api/geocode/forward', {
+  params: { q: keyword, type, limit },
 })
+
+export const reverseGeocode = (longitude, latitude) => geoRequest.get('/api/geocode/reverse', {
+  params: { longitude, latitude },
+})
+
+export const getRegionBoundaries = codes => geoRequest.post('/api/regions/boundaries/by-codes', { codes })

@@ -33,9 +33,9 @@ export const statsSpotCount = () => {
     })
 }
 
-export const getVisitedCities = () => {
+export const getVisitedCityCodes = () => {
     return request({
-        url: '/travel/getVisitedCities',
+        url: '/travel/visited-city-codes',
         method: 'get',
     })
 }

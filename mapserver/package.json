@@ -1,9 +1,0 @@
-{
-  "name": "eastbill-mapserver",
-  "private": true,
-  "type": "module",
-  "scripts": {
-    "migrate": "node migrate-from-mysql.mjs",
-    "start": "node server.mjs"
-  }
-}

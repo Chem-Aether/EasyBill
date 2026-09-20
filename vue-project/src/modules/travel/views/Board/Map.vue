@@ -15,8 +15,8 @@ import { storeToRefs } from 'pinia'
 import * as maplibregl from 'maplibre-gl'
 import { Protocol } from 'pmtiles'
 import 'maplibre-gl/dist/maplibre-gl.css'
-import cityGeoJson from '@/assets/中国_市.json'
-import { getFootprints, getTicketData, getVisitedCities } from '@/modules/travel/apis/travel.js'
+import { getFootprints, getTicketData, getVisitedCityCodes } from '@/modules/travel/apis/travel.js'
+import { getRegionBoundaries } from '@/modules/travel/apis/sysResource.js'
 import { useTravleStore } from '@/modules/travel/stores/TravelStore.js'
 
 const MAP_SERVER = import.meta.env.VITE_MAP_SERVER || 'http://127.0.0.1:8765'
@@ -26,7 +26,7 @@ const { mapType } = storeToRefs(store)
 const mapContainer = ref(null)
 let map
 let popup
-let visitedCities = []
+let exploredRegions = EMPTY_COLLECTION
 let flightFeatures = EMPTY_COLLECTION
 let trainFeatures = EMPTY_COLLECTION
 let footprintFeatures = EMPTY_COLLECTION
@@ -236,7 +236,7 @@ function addPlaneIcon() {
 function addTravelLayers() {
   if (map.getSource('explored-cities')) return
   addPlaneIcon()
-  map.addSource('explored-cities', { type: 'geojson', data: cityGeoJson })
+  map.addSource('explored-cities', { type: 'geojson', data: exploredRegions })
   map.addSource('travel-lines', { type: 'geojson', data: EMPTY_COLLECTION })
   map.addSource('animated-planes', { type: 'geojson', data: EMPTY_COLLECTION })
   map.addSource('animated-train-dots', { type: 'geojson', data: EMPTY_COLLECTION })
@@ -247,8 +247,8 @@ function addTravelLayers() {
     clusterMaxZoom: 12,
     clusterRadius: 42
   })
-  map.addLayer({ id: 'explored-fill', type: 'fill', source: 'explored-cities', filter: ['in', ['get', 'name'], ['literal', visitedCities]], paint: { 'fill-color': '#37e6a5', 'fill-opacity': 0.38 } })
-  map.addLayer({ id: 'explored-outline', type: 'line', source: 'explored-cities', filter: ['in', ['get', 'name'], ['literal', visitedCities]], paint: { 'line-color': '#7effcf', 'line-width': 1.5, 'line-opacity': 0.9 } })
+  map.addLayer({ id: 'explored-fill', type: 'fill', source: 'explored-cities', paint: { 'fill-color': '#37e6a5', 'fill-opacity': 0.38 } })
+  map.addLayer({ id: 'explored-outline', type: 'line', source: 'explored-cities', paint: { 'line-color': '#7effcf', 'line-width': 1.5, 'line-opacity': 0.9 } })
   map.addLayer({ id: 'flight-route-glow', type: 'line', source: 'travel-lines', filter: ['==', ['get', 'kind'], 'flight'], paint: { 'line-color': '#ffbd59', 'line-width': 7, 'line-opacity': 0.18, 'line-blur': 4 } })
   map.addLayer({ id: 'travel-routes', type: 'line', source: 'travel-lines', filter: ['==', ['geometry-type'], 'LineString'], paint: { 'line-color': ['match', ['get', 'kind'], 'flight', '#ffbd59', '#59d8ff'], 'line-width': 2.4, 'line-opacity': 0.92, 'line-dasharray': [2, 1.2] } })
   map.addLayer({ id: 'travel-points', type: 'circle', source: 'travel-lines', filter: ['in', ['get', 'kind'], ['literal', ['flight-point', 'train-point', 'train-waypoint']]], paint: { 'circle-radius': ['match', ['get', 'kind'], 'train-waypoint', 2.5, 5], 'circle-color': ['match', ['get', 'kind'], 'flight-point', '#ffbd59', '#59d8ff'], 'circle-stroke-color': '#06101a', 'circle-stroke-width': ['match', ['get', 'kind'], 'train-waypoint', 1, 2] } })
@@ -383,9 +383,14 @@ function stopTrainAnimation() {
 }
 
 async function loadTravelData() {
-  const results = await Promise.allSettled([getVisitedCities(), getTicketData('flight'), getTicketData('train'), getFootprints()])
+  const results = await Promise.allSettled([getVisitedCityCodes(), getTicketData('flight'), getTicketData('train'), getFootprints()])
   const value = index => results[index].status === 'fulfilled' ? results[index].value?.data || [] : []
-  visitedCities = value(0)
+  const cityCodes = value(0)
+  try {
+    exploredRegions = cityCodes.length ? await getRegionBoundaries(cityCodes) : EMPTY_COLLECTION
+  } catch {
+    exploredRegions = EMPTY_COLLECTION
+  }
   flightFeatures = lineCollection(value(1), 'flight')
   trainFeatures = lineCollection(value(2), 'train')
   footprintFeatures = {
@@ -402,11 +407,7 @@ async function loadTravelData() {
       }))
   }
   map?.getSource('footprint-points')?.setData(footprintFeatures)
-  if (map?.getLayer('explored-fill')) {
-    const filter = ['in', ['get', 'name'], ['literal', visitedCities]]
-    map.setFilter('explored-fill', filter)
-    map.setFilter('explored-outline', filter)
-  }
+  map?.getSource('explored-cities')?.setData(exploredRegions)
   updateMode()
 }
 
