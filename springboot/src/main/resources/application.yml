@@ -25,7 +25,7 @@ spring:
                                         password: 123456
                                 travel:
                                         driver-class-name: com.mysql.cj.jdbc.Driver
-                                        url: jdbc:mysql://localhost:3306/travel_database?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+                                        url: jdbc:mysql://localhost:3306/travel_database?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
                                         username: root
                                         password: 123456
         # redis配置
