@@ -13,12 +13,16 @@
 import { ref } from 'vue'
 
 //初始化标题总统计数据
-import {statsSpotCount} from '@/modules/travel/apis/travel.js'
+import {getFootprints} from '@/modules/travel/apis/travel.js'
 
 const Total = ref();
-statsSpotCount().then(res => {
-  console.log('统计数据', res.data)
-  Total.value = res.data || []
+getFootprints().then(res => {
+  const codes = (res.data || []).map(item => String(item.adcode || '')).filter(code => code.length >= 6)
+  Total.value = {
+    province: new Set(codes.map(code => code.slice(0, 2))).size,
+    city: new Set(codes.map(code => ['11', '12', '31', '50'].includes(code.slice(0, 2)) ? code.slice(0, 2) : code.slice(0, 4))).size,
+    area: new Set(codes).size
+  }
 })
 
 

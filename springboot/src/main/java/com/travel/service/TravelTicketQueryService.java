@@ -1,5 +1,6 @@
 package com.travel.service;
 
+import com.baomidou.dynamic.datasource.annotation.DS;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.mapserver.GeoReferenceClient;
 import com.mapserver.GeoReferenceClient.GeoAirport;
@@ -12,6 +13,8 @@ import com.travel.mapper.TrainRecordMapper;
 import com.travel.mapper.TrainStationRecordMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -21,7 +24,8 @@ import java.util.*;
 
 
 @Service
-public class TicketStatisticsService {
+@DS("travel")
+public class TravelTicketQueryService {
 
     @Autowired
     private TrainRecordMapper trainRecordMapper;
@@ -32,7 +36,8 @@ public class TicketStatisticsService {
     @Autowired
     private GeoReferenceClient geoReferenceClient;
 
-    public List<Map<String, Object>> getTicketList(String type) {
+    public List<Map<String, Object>> findTickets(String type, Integer year) {
+        validateFilter(type, year, true);
         List<Map<String, Object>> trainList = new ArrayList<>();
         List<Map<String, Object>> flightList = new ArrayList<>();
 
@@ -42,10 +47,10 @@ public class TicketStatisticsService {
 
         // 获取数据
         if (isAll || isTrain) {
-            trainList = getTrainTickets();
+            trainList = getTrainTickets(year);
         }
         if (isAll || isPlane) {
-            flightList = getFlightTickets();
+            flightList = getFlightTickets(year);
         }
 
         if (isAll) {
@@ -64,40 +69,51 @@ public class TicketStatisticsService {
         return isTrain ? trainList : flightList;
     }
 
-    public List<Map<String, Object>> getTravelStatistics(String type) {
+    private List<Map<String, Object>> buildDistribution(String type, Integer year) {
         if ("train".equals(type)) {
-            return trainRecordMapper.selectMaps(
-                    Wrappers.<TrainRecord>query()
+            var query = Wrappers.<TrainRecord>query()
+                    .ge(year != null, "departure_datetime", year + "-01-01")
+                    .lt(year != null, "departure_datetime", (year == null ? 0 : year + 1) + "-01-01")
                             .groupBy("train_type")
-                            .select("train_type AS name", "COUNT(*) AS value")
-            );
+                            .select("train_type AS name", "COUNT(*) AS value");
+            return trainRecordMapper.selectMaps(query);
         }
 
         if ("flight".equals(type)) {
-            return flightRecordMapper.selectMaps(
-                    Wrappers.<FlightRecord>query()
+            var query = Wrappers.<FlightRecord>query()
+                    .ge(year != null, "takeoff_time", year + "-01-01")
+                    .lt(year != null, "takeoff_time", (year == null ? 0 : year + 1) + "-01-01")
                             .groupBy("LEFT(flight_no, 2)")
-                            .select("LEFT(flight_no, 2) AS name", "COUNT(*) AS value")
-            );
+                            .select("LEFT(flight_no, 2) AS name", "COUNT(*) AS value");
+            return flightRecordMapper.selectMaps(query);
         }
 
         return new ArrayList<>();
     }
 
-    public List<Map<String, Object>> getTicketDashboard(String type) {
+    private List<Map<String, Object>> buildMetrics(String type, Integer year) {
         List<Map<String, Object>> dashboard = new ArrayList<>();
 
         if ("train".equals(type)) {
             // 火车统计
             Map<String, Object> stats = trainRecordMapper.selectMaps(Wrappers.<TrainRecord>query()
+                    .ge(year != null, "departure_datetime", year + "-01-01")
+                    .lt(year != null, "departure_datetime", (year == null ? 0 : year + 1) + "-01-01")
                     .select("COUNT(*) AS totalCount",
                             "IFNULL(SUM(mileage_km), 0) AS totalMileage",
                             "IFNULL(SUM(TIMESTAMPDIFF(MINUTE, departure_datetime, arrival_datetime)), 0) AS totalMinutes")
             ).get(0);
 
-            int stationCount = trainStationRecordMapper.selectObjs(
+            List<Long> filteredTrainIds = year == null ? List.of() : trainRecordMapper.selectList(
+                    Wrappers.<TrainRecord>lambdaQuery()
+                            .select(TrainRecord::getTrainId)
+                            .ge(TrainRecord::getDepartureDatetime, LocalDateTime.of(year, 1, 1, 0, 0))
+                            .lt(TrainRecord::getDepartureDatetime, LocalDateTime.of(year + 1, 1, 1, 0, 0)))
+                    .stream().map(TrainRecord::getTrainId).toList();
+            int stationCount = year != null && filteredTrainIds.isEmpty() ? 0 : trainStationRecordMapper.selectObjs(
                     Wrappers.<TrainStationRecord>lambdaQuery()
                             .select(TrainStationRecord::getStationName)
+                            .in(year != null, TrainStationRecord::getTrainId, filteredTrainIds)
                             .groupBy(TrainStationRecord::getStationName)
             ).size();
 
@@ -114,6 +130,8 @@ public class TicketStatisticsService {
         if ("flight".equals(type)) {
             // 航班统计
             Map<String, Object> stats = flightRecordMapper.selectMaps(Wrappers.<FlightRecord>query()
+                    .ge(year != null, "takeoff_time", year + "-01-01")
+                    .lt(year != null, "takeoff_time", (year == null ? 0 : year + 1) + "-01-01")
                     .select("COUNT(*) AS flightCount",
                             "IFNULL(SUM(flight_distance_km), 0) AS totalDistance",
                             "IFNULL(SUM(TIMESTAMPDIFF(MINUTE, takeoff_time, landing_time)), 0) AS totalMinutes",
@@ -134,9 +152,29 @@ public class TicketStatisticsService {
         return dashboard;
     }
 
+    public Map<String, Object> getTicketSummary(String type, Integer year) {
+        validateFilter(type, year, false);
+        Map<String, Object> summary = new LinkedHashMap<>();
+        summary.put("metrics", buildMetrics(type, year));
+        summary.put("distribution", buildDistribution(type, year));
+        return summary;
+    }
+
+    private void validateFilter(String mode, Integer year, boolean allowAll) {
+        Set<String> modes = allowAll ? Set.of("all", "train", "flight") : Set.of("train", "flight");
+        if (!modes.contains(mode)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "不支持的旅行模式");
+        }
+        if (year != null && (year < 1900 || year > 2100)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "年份超出有效范围");
+        }
+    }
+
     // ====================== 火车格式化（添加临时排序时间） ======================
-    private List<Map<String, Object>> getTrainTickets() {
-        List<TrainRecord> list = trainRecordMapper.selectList(null);
+    private List<Map<String, Object>> getTrainTickets(Integer year) {
+        List<TrainRecord> list = trainRecordMapper.selectList(Wrappers.<TrainRecord>lambdaQuery()
+                .ge(year != null, TrainRecord::getDepartureDatetime, year == null ? null : LocalDateTime.of(year, 1, 1, 0, 0))
+                .lt(year != null, TrainRecord::getDepartureDatetime, year == null ? null : LocalDateTime.of(year + 1, 1, 1, 0, 0)));
         List<Map<String, Object>> result = new ArrayList<>();
 
         List<Long> trainIds = list.stream()
@@ -227,8 +265,10 @@ public class TicketStatisticsService {
         }
     }
 
-    private List<Map<String, Object>> getFlightTickets() {
-        List<FlightRecord> list = flightRecordMapper.selectList(null);
+    private List<Map<String, Object>> getFlightTickets(Integer year) {
+        List<FlightRecord> list = flightRecordMapper.selectList(Wrappers.<FlightRecord>lambdaQuery()
+                .ge(year != null, FlightRecord::getTakeoffTime, year == null ? null : LocalDateTime.of(year, 1, 1, 0, 0))
+                .lt(year != null, FlightRecord::getTakeoffTime, year == null ? null : LocalDateTime.of(year + 1, 1, 1, 0, 0)));
         List<Map<String, Object>> result = new ArrayList<>();
 
         Set<String> airportCodes = new HashSet<>();
@@ -243,6 +283,7 @@ public class TicketStatisticsService {
             List<Map<String, Object>> more = new ArrayList<>();
 
             item.put("Number", f.getFlightNo());
+            item.put("flightId", f.getFlightId());
             item.put("From", f.getDepartureIcao());
             item.put("To", f.getArrivalIcao());
             item.put("time", calculateDuration(f.getTakeoffTime(), f.getLandingTime()));

@@ -540,17 +540,35 @@ const getColorByIndex = (index) => {
 </script>
 
 <style scoped>
-.train-manage-page { width: 96%; margin: 20px auto; }
-.page-title { font-size: 22px; font-weight: bold; margin-bottom: 15px; }
+.train-manage-page { width: 100%; margin: 0 auto; }
+.page-title { font-size: 25px; font-weight: 750; margin-bottom: 22px; }
 .query-card { margin-bottom: 15px; }
 .tool-bar { margin-bottom: 15px; }
-.card-list { display: flex; flex-direction: column; gap: 15px; }
+.card-list { display: flex; flex-direction: column; gap: 12px; }
 .train-card { width: 100%; }
 .train-card.editing { border: 2px solid #1890ff; border-radius: 8px; }
-.card-header { display: flex; justify-content: space-between; font-weight: 600; }
-.grid-form { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.card-header { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; justify-content: space-between; font-weight: 600; }
+.grid-form { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px 14px; }
 .station-section { margin-top: 10px; }
 .station-header { display: flex; justify-content: space-between; cursor: pointer; padding: 5px 0; font-weight: 500; }
 .station-item { display: flex; align-items: center; padding: 6px 10px; border-radius: 4px; margin: 4px 0; }
 .empty-tip { padding: 40px 0; text-align: center; }
+.train-card :deep(.el-card__header) { padding: 15px 18px; border-color: #e7eded; background: #fbfcfc; }
+.train-card :deep(.el-card__body) { padding: 18px; }
+.grid-form :deep(.el-form-item) { margin-bottom: 10px; }
+@media (max-width: 1050px) { .grid-form { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 760px) {
+  .page-title { font-size: 21px; margin-bottom: 16px; }
+  .tool-bar { display: grid; grid-template-columns: 1fr 1fr; }
+  .tool-bar :deep(.el-button) { width: 100%; margin: 0; }
+  .grid-form { grid-template-columns: 1fr; }
+  .train-card :deep(.el-card__header), .train-card :deep(.el-card__body) { padding: 14px; }
+  .card-header > span { width: 100%; }
+  .card-header > div { display: grid; width: 100%; grid-template-columns: 1fr 1fr; gap: 7px; }
+  .card-header > div :deep(.el-button) { width: 100%; margin: 0; }
+  .card-header > div :deep(.el-button.is-link) { background: transparent; }
+  .station-item { align-items: flex-start; overflow-x: auto; }
+  .train-manage-page > :deep(.el-pagination) { justify-content: center; flex-wrap: wrap; gap: 5px; margin-top: 18px; }
+  .train-manage-page > :deep(.el-pagination .el-pagination__jump) { display: none; }
+}
 </style>

@@ -1,5 +1,7 @@
 package com.travel.service;
 
+import com.baomidou.dynamic.datasource.annotation.DS;
+
 import com.travel.dto.FlightRecordQueryDTO;
 import com.travel.entity.FlightRecord;
 import com.travel.mapper.FlightRecordMapper;
@@ -12,6 +14,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import org.springframework.util.StringUtils;
 
 @Service
+@DS("travel")
 public class FlightRecordService {
 
     @Autowired

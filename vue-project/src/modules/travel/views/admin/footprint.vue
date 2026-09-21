@@ -24,6 +24,9 @@
       <el-table-column prop="regionName" label="点亮地区" min-width="220" sortable="custom" />
       <el-table-column prop="spotName" label="地点名称" min-width="180" sortable="custom" />
       <el-table-column prop="spotType" label="类型" width="120" sortable="custom" />
+      <el-table-column prop="visitType" label="记录性质" width="110" sortable="custom">
+        <template #default="scope">{{ scope.row.visitType === 'transit' ? '途经' : '旅行' }}</template>
+      </el-table-column>
       <el-table-column prop="visitTime" label="到访日期" width="140" sortable="custom" />
       <el-table-column label="坐标" min-width="190">
         <template #default="scope">
@@ -60,7 +63,7 @@
       destroy-on-close
     >
       <el-form label-width="90px">
-        <el-form-item label="地图选点" required>
+        <el-form-item label="地图选点">
           <FootprintMapPicker
             :longitude="form.longitude"
             :latitude="form.latitude"
@@ -74,6 +77,12 @@
           </div>
         </el-form-item>
         <div class="field-grid">
+          <el-form-item label="记录性质" required>
+            <el-radio-group v-model="form.visitType">
+              <el-radio-button value="travel">旅行地点</el-radio-button>
+              <el-radio-button value="transit">途经地点</el-radio-button>
+            </el-radio-group>
+          </el-form-item>
           <el-form-item label="地点名称" required>
             <el-input v-model="form.spotName" placeholder="选择 POI 后自动填写，也可手动输入" maxlength="100" />
           </el-form-item>
@@ -94,8 +103,18 @@
         </div>
         <el-collapse class="more-fields">
           <el-collapse-item title="更多信息" name="more">
-            <el-form-item label="地址备注">
-              <el-input v-model="form.address" placeholder="街道、门牌号或位置说明" maxlength="255" />
+            <el-form-item label="旅行心得">
+              <el-input
+                v-model="form.travelNote"
+                type="textarea"
+                :rows="4"
+                placeholder="记录这次旅行的见闻、感受或特别回忆"
+                maxlength="1000"
+                show-word-limit
+              />
+            </el-form-item>
+            <el-form-item label="缩略图">
+              <el-input v-model="form.imageUrl" placeholder="图片 URL，可留空" maxlength="500" />
             </el-form-item>
           </el-collapse-item>
         </el-collapse>
@@ -129,10 +148,12 @@ const form = reactive({
   adcode: '',
   spotName: '',
   spotType: '景点',
+  visitType: 'travel',
   visitTime: null,
   longitude: null,
   latitude: null,
-  address: ''
+  travelNote: '',
+  imageUrl: ''
 })
 
 const filteredRows = computed(() => {
@@ -201,10 +222,12 @@ function resetForm() {
     adcode: '',
     spotName: '',
     spotType: '景点',
+    visitType: 'travel',
     visitTime: null,
     longitude: null,
     latitude: null,
-    address: ''
+    travelNote: '',
+    imageUrl: ''
   })
   regionOptions.value = []
 }
@@ -220,10 +243,12 @@ function openEdit(row) {
     adcode: row.adcode,
     spotName: row.spotName,
     spotType: row.spotType,
+    visitType: row.visitType || 'travel',
     visitTime: row.visitTime || null,
     longitude: row.longitude == null ? null : Number(row.longitude),
     latitude: row.latitude == null ? null : Number(row.latitude),
-    address: row.address || ''
+    travelNote: row.travelNote || '',
+    imageUrl: row.imageUrl || ''
   })
   regionOptions.value = [{ code: row.adcode, fullName: row.regionName }]
   dialogVisible.value = true
@@ -250,13 +275,10 @@ async function handleMapPick(point) {
 function clearMapPoint() {
   form.longitude = null
   form.latitude = null
-  form.adcode = ''
-  regionOptions.value = []
 }
 
 async function save() {
   if (!form.adcode) return ElMessage.warning('请从搜索结果中选择区县')
-  if (form.longitude == null || form.latitude == null) return ElMessage.warning('请在地图上选择地点')
   if (!form.spotName.trim()) return ElMessage.warning('请输入地点名称')
   if (!form.spotType) return ElMessage.warning('请选择地点类型')
 
@@ -265,10 +287,12 @@ async function save() {
     adcode: form.adcode,
     spotName: form.spotName.trim(),
     spotType: form.spotType,
+    visitType: form.visitType,
     visitTime: form.visitTime || null,
     longitude: form.longitude,
     latitude: form.latitude,
-    address: form.address.trim() || null
+    travelNote: form.travelNote.trim() || null,
+    imageUrl: form.imageUrl.trim() || null
   }
   try {
     if (form.spotId) await updateFootprint(form.spotId, payload)
@@ -296,11 +320,11 @@ async function remove(row) {
 </script>
 
 <style scoped>
-.footprint-page { width: min(1180px, 100%); margin: 0 auto; }
+.footprint-page { width: 100%; margin: 0 auto; }
 .page-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; margin-bottom: 22px; }
 h1 { margin: 0 0 6px; font-size: 24px; color: #1f2937; letter-spacing: 0; }
 p { margin: 0; color: #667085; }
-.toolbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+.toolbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; padding: 14px; border: 1px solid #dce5e7; border-radius: 7px; background: #fff; }
 .count { color: #667085; font-size: 14px; }
 .muted { color: #98a2b3; }
 .footprint-page :deep(.picker-shell) { width: 100%; }
@@ -316,7 +340,11 @@ p { margin: 0; color: #667085; }
 @media (max-width: 700px) {
   .page-header { align-items: stretch; flex-direction: column; }
   .toolbar { align-items: stretch; flex-direction: column; gap: 10px; }
+  .toolbar :deep(.el-input) { width: 100% !important; }
+  .page-header :deep(.el-button) { width: 100%; }
   .pagination-bar { justify-content: flex-start; overflow-x: auto; }
+  .pagination-bar :deep(.el-pagination) { flex-wrap: wrap; gap: 5px; }
+  .pagination-bar :deep(.el-pagination__jump) { display: none; }
   .field-grid { grid-template-columns: 1fr; }
   .field-grid :deep(.el-form-item:first-child) { grid-column: auto; }
   .more-fields { margin-left: 0; }

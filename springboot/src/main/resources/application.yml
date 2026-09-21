@@ -14,10 +14,20 @@ spring:
                 banner-mode: console
         # 数据库配置
         datasource:
-                driver-class-name: com.mysql.cj.jdbc.Driver
-                url: jdbc:mysql://localhost:3306/springdatabase?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
-                username: root
-                password: 123456
+                dynamic:
+                        primary: master
+                        strict: true
+                        datasource:
+                                master:
+                                        driver-class-name: com.mysql.cj.jdbc.Driver
+                                        url: jdbc:mysql://localhost:3306/springdatabase?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+                                        username: root
+                                        password: 123456
+                                travel:
+                                        driver-class-name: com.mysql.cj.jdbc.Driver
+                                        url: jdbc:mysql://localhost:3306/travel_database?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+                                        username: root
+                                        password: 123456
         # redis配置
         redis:
                 host: localhost  # Redis服务器地址

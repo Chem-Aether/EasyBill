@@ -16,22 +16,10 @@ public class FootSpotController{
     @Autowired
     private FootSpotService footSpotService;
 
-    @GetMapping("/statsSpotCount")
-    @Operation(summary = "查询各行政区级别数")
-    public Result statsCount() {
-        return Result.success(footSpotService.statsProvinceCityDistrictCount());
-    }
-
-    @GetMapping("/visited-city-codes")
-    @Operation(summary = "查询已探索城市编码")
-    public Result getVisitedCityCodes(){
-        return Result.success(footSpotService.getVisitedCityCodes());
-    }
-
     @GetMapping("/footprints")
     @Operation(summary = "查询足迹管理列表")
-    public Result footprints() {
-        return Result.success(footSpotService.findAllWithRegion());
+    public Result footprints(@RequestParam(required = false) Integer year) {
+        return Result.success(footSpotService.findAllWithRegion(year));
     }
 
     @PostMapping("/footprints")

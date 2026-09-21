@@ -16,37 +16,38 @@ import org.springframework.web.bind.annotation.*;
  * - 保存接口支持同时传入 stations，后端事务原子保存
  */
 @RestController
-@RequestMapping("/travel/trainTickets")
+@RequestMapping("/travel/trains")
 @Tag(name = "火车票管理接口", description = "列表/详情/保存/删除")
 public class TrainTicketController {
 
     @Autowired
     private TrainTicketService trainTicketService;
 
-    @GetMapping("/list")
+    @GetMapping
     public Result list(TrainRecordQueryDTO dto) {
         return Result.success(trainTicketService.listWithStationCount(dto));
     }
 
-    @GetMapping("/get/{trainId}")
+    @GetMapping("/{trainId}")
     public Result get(@PathVariable Long trainId) {
         TrainRecord ticket = trainTicketService.getTicket(trainId);
         return Result.success(ticket);
     }
 
-    @PostMapping("/add")
+    @PostMapping
     public Result add(@RequestBody TrainTicketSaveRequestDTO dto) {
         Long trainId = trainTicketService.add(dto);
         return Result.success(trainId);
     }
 
-    @PutMapping("/update")
-    public Result update(@RequestBody TrainTicketSaveRequestDTO dto) {
-        Long trainId = trainTicketService.update(dto);
-        return Result.success(trainId);
+    @PutMapping("/{trainId}")
+    public Result update(@PathVariable Long trainId, @RequestBody TrainTicketSaveRequestDTO dto) {
+        dto.getTicket().setTrainId(trainId);
+        Long updatedTrainId = trainTicketService.update(dto);
+        return Result.success(updatedTrainId);
     }
 
-    @DeleteMapping("/delete/{trainId}")
+    @DeleteMapping("/{trainId}")
     public Result delete(@PathVariable Long trainId) {
         trainTicketService.delete(trainId);
         return Result.success();

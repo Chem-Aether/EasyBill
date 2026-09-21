@@ -15,28 +15,28 @@
 import SmallTittle from '@/modules/travel/views/Board/SmallTittle.vue';
 import {ref, watch} from 'vue';
 import { storeToRefs } from 'pinia'
-import {getTicketDashboard} from '@/modules/travel/apis/travel.js'
+import {getTicketSummary} from '@/modules/travel/apis/travel.js'
 import { useTravleStore } from '@/modules/travel/stores/TravelStore.js'
 const store = useTravleStore();
 const { mapName, mapType } = storeToRefs(store)
 const PanelDataSource = ref();
 
 // 初始化数据
-getTicketDashboard().then(res => {
+getTicketSummary('train').then(res => {
   console.log('统计数据', res.data)
-  PanelDataSource.value = res.data || []
+  PanelDataSource.value = res.data?.metrics || []
 })
 
 // 监听mapType变化
 watch(mapType, (newVal) => {
   if (newVal === 'flight') {
-    getTicketDashboard(newVal).then(res => {
-      PanelDataSource.value = res.data || []
+    getTicketSummary(newVal).then(res => {
+      PanelDataSource.value = res.data?.metrics || []
     })
   }
   else{
-    getTicketDashboard('train').then(res => {
-      PanelDataSource.value = res.data || []
+    getTicketSummary('train').then(res => {
+      PanelDataSource.value = res.data?.metrics || []
     })
   }
 })

@@ -3,7 +3,7 @@ import request from '@/utils/request.js'
 // 列表（支持分页/条件查询）
 export const getTrainList = (params = {}) =>
     request({
-        url: '/travel/trainTickets/list',
+        url: '/travel/trains',
         method: 'GET',
         params
     }).then(res => {
@@ -21,7 +21,7 @@ export const getTrainList = (params = {}) =>
 // 获取车票基础信息（不含途经站明细）
 export const getTrainTicket = (trainId) => {
     return request({
-        url: `/travel/trainTickets/get/${trainId}`,
+        url: `/travel/trains/${trainId}`,
         method: 'GET'
     })
 }
@@ -29,7 +29,7 @@ export const getTrainTicket = (trainId) => {
 // 获取某个车票的途经站明细（展开时用）
 export const getTrainStationsByTrainId = (trainId) => {
     return request({
-        url: `/travel/trainStations/list/${trainId}`,
+        url: `/travel/trains/${trainId}/stations`,
         method: 'GET'
     })
 }
@@ -39,7 +39,7 @@ export const getTrainStationsByTrainId = (trainId) => {
 // stations: TrainStationRecord[]
 export const addTrainTicket = ({ ticket, stations } = {}) => {
     return request({
-        url: '/travel/trainTickets/add',
+        url: '/travel/trains',
         method: 'POST',
         data: { ticket, stations }
     })
@@ -48,7 +48,7 @@ export const addTrainTicket = ({ ticket, stations } = {}) => {
 // 更新车票（支持同时保存途经站最终态）
 export const updateTrainTicket = ({ ticket, stations } = {}) => {
     return request({
-        url: '/travel/trainTickets/update',
+        url: `/travel/trains/${ticket.trainId}`,
         method: 'PUT',
         data: { ticket, stations }
     })
@@ -56,7 +56,7 @@ export const updateTrainTicket = ({ ticket, stations } = {}) => {
 
 export const deleteTrainTicket = (trainId) => {
     return request({
-        url: `/travel/trainTickets/delete/${trainId}`,
+        url: `/travel/trains/${trainId}`,
         method: 'DELETE'
     })
 }

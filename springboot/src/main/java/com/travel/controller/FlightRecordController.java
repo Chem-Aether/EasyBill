@@ -10,7 +10,7 @@ import org.springframework.web.bind.annotation.*;
 
 
 @RestController
-@RequestMapping("/travel/flightTickets")
+@RequestMapping("/travel/flights")
 @Tag(name = "机票管理接口", description = "航班/火车/票务相关接口")
 public class FlightRecordController {
 
@@ -18,26 +18,27 @@ public class FlightRecordController {
     private FlightRecordService flightRecordService;
 
     // 条件查询
-    @GetMapping("/list")
+    @GetMapping
     public Result list(FlightRecordQueryDTO dto) {
         if (dto == null) dto = new FlightRecordQueryDTO();
         return Result.success(flightRecordService.list(dto));
     }
 
     // 单个新增
-    @PostMapping("/insert")
+    @PostMapping
     public Result save(@RequestBody FlightRecord flightRecord) {
         return Result.success(flightRecordService.save(flightRecord));
     }
 
     // 修改
-    @PutMapping("/update")
-    public Result update(@RequestBody FlightRecord flightRecord) {
+    @PutMapping("/{id}")
+    public Result update(@PathVariable Long id, @RequestBody FlightRecord flightRecord) {
+        flightRecord.setFlightId(id);
         return Result.success(flightRecordService.updateById(flightRecord));
     }
 
     // 删除
-    @DeleteMapping("/delete/{id}")
+    @DeleteMapping("/{id}")
     public Result remove(@PathVariable Long id) {
         if (id == null || id <= 0) {
             return Result.error("ID不能为空");

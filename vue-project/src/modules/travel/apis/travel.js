@@ -1,48 +1,36 @@
 import request from '@/utils/request.js';
 
 
-export const getTicketData = (type = 'all') => {
+const yearParams = (year) => year === 'all' ? {} : { year }
+
+export const getTickets = (mode, year = 'all') => {
     return request({
-        url: '/travel/getTicketData',
+        url: '/travel/tickets',
         method: 'get',
-        params: { type }
+        params: { mode, ...yearParams(year) }
     })
 }
 
 
-export const getTicketStatistics = (type = 'train') => {
+export const getTicketSummary = (mode, year = 'all') => {
     return request({
-        url: '/travel/getTicketStatistics',
+        url: '/travel/tickets/summary',
         method: 'get',
-        params: { type }
+        params: { mode, ...yearParams(year) }
     })
 }
 
-export const getTicketDashboard = (type = 'train') => {
-    return request({
-        url: '/travel/getTicketDashboard',
-        method: 'get',
-        params: { type }
-    })
-}
-
-export const statsSpotCount = () => {
-    return request({
-        url: '/travel/statsSpotCount',
-        method: 'get',
-    })
-}
-
-export const getVisitedCityCodes = () => {
-    return request({
-        url: '/travel/visited-city-codes',
-        method: 'get',
-    })
-}
-
-export const getFootprints = () => request({
+export const getFootprints = (year = 'all') => request({
     url: '/travel/footprints',
-    method: 'get'
+    method: 'get',
+    params: yearParams(year)
+})
+
+export const exportTravelData = () => request({
+    url: '/travel/export',
+    method: 'get',
+    responseType: 'blob',
+    fullResponse: true
 })
 
 export const addFootprint = (data) => request({

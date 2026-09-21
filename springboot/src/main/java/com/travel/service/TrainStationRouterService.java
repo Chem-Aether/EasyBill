@@ -1,5 +1,7 @@
 package com.travel.service;
 
+import com.baomidou.dynamic.datasource.annotation.DS;
+
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.travel.entity.TrainStationRecord;
@@ -10,6 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 
 @Service
+@DS("travel")
 public class TrainStationRouterService extends ServiceImpl<TrainStationRecordMapper, TrainStationRecord> {
 
     public List<TrainStationRecord> listByTrainId(Long trainId) {

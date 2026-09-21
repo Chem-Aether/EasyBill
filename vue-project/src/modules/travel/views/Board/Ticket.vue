@@ -25,7 +25,7 @@
 </template>
   
 <script setup>
-import { getTicketData } from '@/modules/travel/apis/travel.js'
+import { getTickets } from '@/modules/travel/apis/travel.js'
 import {ref, watch} from 'vue'
 import { storeToRefs } from 'pinia'
 import { useTravleStore } from '@/modules/travel/stores/TravelStore.js'
@@ -33,7 +33,7 @@ const store = useTravleStore();
 const { mapType } = storeToRefs(store)
 const TicketDataSource = ref();
 
-getTicketData().then(res => {
+getTickets('all').then(res => {
   console.log('全部票据数据', res.data)
   TicketDataSource.value = res.data
 })
@@ -52,17 +52,17 @@ function getRandomInt(min, max) {
 // 监听mapType变化
 watch(mapType, (newVal) => {
   if (newVal === 'flight') {
-    getTicketData(newVal).then(res => {
+    getTickets(newVal).then(res => {
       TicketDataSource.value = res.data || []
     })
   }
   else if(newVal === 'train'){
-    getTicketData('train').then(res => {
+    getTickets('train').then(res => {
       TicketDataSource.value = res.data || []
     })
   }
   else {
-    getTicketData('all').then(res => {
+    getTickets('all').then(res => {
       TicketDataSource.value = res.data || []
     })
   }
@@ -155,4 +155,3 @@ ul li{
   line-height: 28px;
 }
 </style>
-  

@@ -1,5 +1,7 @@
 package com.travel.service;
 
+import com.baomidou.dynamic.datasource.annotation.DS;
+
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
@@ -23,6 +25,7 @@ import java.util.Objects;
  * 车票对外领域服务：接口分开，但写操作内部依然用“聚合事务”保证原子性。
  */
 @Service
+@DS("travel")
 public class TrainTicketService {
 
     @Autowired
@@ -91,7 +94,7 @@ public class TrainTicketService {
 
     /**
      * 保存：新增/修改车票，同时保存途径站（一个事务）。
-    * 说明：为保持接口清晰，Controller 拆分了 add/update；
+    * 保存车票及其途经站最终状态。
     * Service 仍保留通用方法以复用实现。
      */
     @Transactional(rollbackFor = Exception.class)

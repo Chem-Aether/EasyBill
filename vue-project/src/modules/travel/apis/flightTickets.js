@@ -3,7 +3,7 @@ import request from '@/utils/request.js'
 // 获取机票列表
 export const getFlightList = (params = {}) => {
     return request({
-        url: '/travel/flightTickets/list',
+        url: '/travel/flights',
         method: 'GET',
         params: {
             // 分页
@@ -62,7 +62,7 @@ const flightTicketFields = (params) => ({
 // 新增机票
 export const insertFlightTicket = (params = {}) => {
     return request({
-        url: '/travel/flightTickets/insert',
+        url: '/travel/flights',
         method: 'POST',
         data: flightTicketFields(params)
     })
@@ -71,7 +71,7 @@ export const insertFlightTicket = (params = {}) => {
 // 根据 ID 修改
 export const updateFlightTicketById = (params = {}) => {
     return request({
-        url: '/travel/flightTickets/update',
+        url: `/travel/flights/${params.flightId}`,
         method: 'PUT',
         data: {
             flightId: params.flightId,
@@ -83,7 +83,7 @@ export const updateFlightTicketById = (params = {}) => {
 // 根据 ID 修改
 export const deleteFlightTicketById = (id) => {
     return request({
-        url: `/travel/flightTickets/delete/${id}`,
+        url: `/travel/flights/${id}`,
         method: 'DELETE'
     })
 }

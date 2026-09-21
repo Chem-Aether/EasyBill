@@ -17,7 +17,7 @@ import SmallTittle from '@/modules/travel/views/Board/SmallTittle.vue';
 import {ref, watch} from 'vue'
 import { storeToRefs } from 'pinia'
 import * as echarts from 'echarts';
-import {getTicketStatistics} from '@/modules/travel/apis/travel.js'
+import {getTicketSummary} from '@/modules/travel/apis/travel.js'
 import { useTravleStore } from '@/modules/travel/stores/TravelStore.js'
 const store = useTravleStore();
 const { mapName, mapType } = storeToRefs(store)
@@ -30,9 +30,9 @@ const Pie = ref();
 var IsPie = ref(false);
 
 // 初始化数据
-getTicketStatistics().then(res => {
+getTicketSummary('train').then(res => {
   console.log('统计数据', res.data)
-  PanelDataSource.value = res.data || []
+  PanelDataSource.value = res.data?.distribution || []
   initChart()
 })
 
@@ -52,13 +52,13 @@ function ChangeChart(){
 
 watch(mapType, (newVal) => {
   if (newVal === 'flight') {
-    getTicketStatistics(newVal).then(res => {
-      PanelDataSource.value = res.data || []
+    getTicketSummary(newVal).then(res => {
+      PanelDataSource.value = res.data?.distribution || []
     })
   }
   else{
-    getTicketStatistics('train').then(res => {
-      PanelDataSource.value = res.data || []
+    getTicketSummary('train').then(res => {
+      PanelDataSource.value = res.data?.distribution || []
     })
   }
 })

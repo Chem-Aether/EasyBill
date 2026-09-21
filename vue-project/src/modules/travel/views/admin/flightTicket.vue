@@ -477,13 +477,13 @@ const refresh = async () => {
 
 <style scoped>
 .flight-manage-page {
-  width: 96%;
-  margin: 20px auto;
+  width: 100%;
+  margin: 0 auto;
 }
 .page-title {
-  font-size: 22px;
-  font-weight: bold;
-  margin-bottom: 15px;
+  font-size: 25px;
+  font-weight: 750;
+  margin-bottom: 22px;
 }
 .query-card {
   margin-bottom: 15px;
@@ -494,7 +494,7 @@ const refresh = async () => {
 .card-list {
   display: flex;
   flex-direction: column;
-  gap: 15px;
+  gap: 12px;
 }
 .flight-card {
   width: 100%;
@@ -505,12 +505,32 @@ const refresh = async () => {
 }
 .card-header {
   display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
   justify-content: space-between;
   font-weight: 600;
 }
 .grid-form {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 8px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px 14px;
+}
+.flight-card :deep(.el-card__header) { padding: 15px 18px; border-color: #e7eded; background: #fbfcfc; }
+.flight-card :deep(.el-card__body) { padding: 18px; }
+.grid-form :deep(.el-form-item) { margin-bottom: 10px; }
+@media (max-width: 1050px) { .grid-form { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 760px) {
+  .page-title { font-size: 21px; margin-bottom: 16px; }
+  .tool-bar { display: grid; grid-template-columns: 1fr 1fr; }
+  .tool-bar :deep(.el-button) { width: 100%; margin: 0; }
+  .grid-form { grid-template-columns: 1fr; }
+  .flight-card :deep(.el-card__header), .flight-card :deep(.el-card__body) { padding: 14px; }
+  .card-header > span { width: 100%; }
+  .card-header > div { display: grid; width: 100%; grid-template-columns: 1fr 1fr; gap: 7px; }
+  .card-header > div :deep(.el-button) { width: 100%; margin: 0; }
+  .card-header > div :deep(.el-button.is-link) { background: transparent; }
+  .flight-manage-page > :deep(.el-pagination) { justify-content: center; flex-wrap: wrap; gap: 5px; margin-top: 18px; }
+  .flight-manage-page > :deep(.el-pagination .el-pagination__jump) { display: none; }
 }
 </style>

@@ -14,12 +14,20 @@ import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import * as maplibregl from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
-import { getFootprints, getTicketData, getVisitedCityCodes } from '@/modules/travel/apis/travel.js'
+import { getFootprints, getTickets } from '@/modules/travel/apis/travel.js'
 import { getRegionBoundaries } from '@/modules/travel/apis/sysResource.js'
 import { useTravleStore } from '@/modules/travel/stores/TravelStore.js'
 
 const MAP_SERVER = import.meta.env.VITE_MAP_SERVER || 'http://127.0.0.1:8765'
 const EMPTY_COLLECTION = { type: 'FeatureCollection', features: [] }
+const FOOTPRINT_DETAIL_ZOOM = 9
+const props = defineProps({
+  selectedYear: {
+    type: [String, Number],
+    default: 'all'
+  }
+})
+const emit = defineEmits(['select-route', 'select-place', 'blank-click', 'footprint-summary', 'footprint-timeline'])
 const store = useTravleStore()
 const { mapType } = storeToRefs(store)
 const mapContainer = ref(null)
@@ -28,7 +36,13 @@ let popup
 let exploredRegions = EMPTY_COLLECTION
 let flightFeatures = EMPTY_COLLECTION
 let trainFeatures = EMPTY_COLLECTION
+let flightRecords = []
+let trainRecords = []
+let footprintRecords = []
+let visibleFootprintRecords = []
 let footprintFeatures = EMPTY_COLLECTION
+let footprintMarkers = []
+let footprintUpdateId = 0
 let planeAnimationFrame = 0
 let lastPlaneFrame = 0
 let trainAnimationFrame = 0
@@ -111,6 +125,8 @@ function lineCollection(records, kind) {
             kind: 'train',
             title: `${start.name} → ${end.name}`,
             number: record.Number || '',
+            ticketType: 'train',
+            ticketId: record.trainId,
             trainId: record.trainId,
             segmentIndex: index
           },
@@ -134,7 +150,18 @@ function lineCollection(records, kind) {
     }
     const coordinates = kind === 'flight' ? flightArc(from, to, lane) : [from, to]
     const title = `${record.From} → ${record.To}`
-    features.push({ type: 'Feature', properties: { kind, title, number: record.Number || '', lane }, geometry: { type: 'LineString', coordinates } })
+    features.push({
+      type: 'Feature',
+      properties: {
+        kind,
+        title,
+        number: record.Number || '',
+        lane,
+        ticketType: kind,
+        ticketId: kind === 'flight' ? record.flightId : record.trainId
+      },
+      geometry: { type: 'LineString', coordinates }
+    })
     points.set(record.From, { coordinates: from, pointKind: `${kind}-point` })
     points.set(record.To, { coordinates: to, pointKind: `${kind}-point` })
   }
@@ -241,8 +268,8 @@ function addTravelLayers() {
     type: 'geojson',
     data: footprintFeatures,
     cluster: true,
-    clusterMaxZoom: 12,
-    clusterRadius: 42
+    clusterMaxZoom: FOOTPRINT_DETAIL_ZOOM - 1,
+    clusterRadius: 52
   })
   map.addLayer({ id: 'explored-fill', type: 'fill', source: 'explored-cities', paint: { 'fill-color': '#37e6a5', 'fill-opacity': 0.38 } })
   map.addLayer({ id: 'explored-outline', type: 'line', source: 'explored-cities', paint: { 'line-color': '#7effcf', 'line-width': 1.5, 'line-opacity': 0.9 } })
@@ -253,10 +280,82 @@ function addTravelLayers() {
   map.addLayer({ id: 'flight-planes', type: 'symbol', source: 'animated-planes', layout: { 'icon-image': 'flight-plane-icon', 'icon-size': 0.72, 'icon-rotate': ['get', 'bearing'], 'icon-rotation-alignment': 'map', 'icon-pitch-alignment': 'map', 'icon-allow-overlap': true, 'icon-ignore-placement': true } })
   map.addLayer({ id: 'train-dot-glow', type: 'circle', source: 'animated-train-dots', paint: { 'circle-radius': 8, 'circle-color': '#59d8ff', 'circle-opacity': 0.2, 'circle-blur': 0.8 } })
   map.addLayer({ id: 'train-moving-dots', type: 'circle', source: 'animated-train-dots', paint: { 'circle-radius': 3.2, 'circle-color': '#d8fbff', 'circle-stroke-color': '#188ca4', 'circle-stroke-width': 1.2 } })
-  map.addLayer({ id: 'footprint-clusters', type: 'circle', source: 'footprint-points', filter: ['has', 'point_count'], paint: { 'circle-color': '#37e6a5', 'circle-radius': ['step', ['get', 'point_count'], 14, 10, 18, 30, 23], 'circle-stroke-color': '#08231c', 'circle-stroke-width': 2 } })
-  map.addLayer({ id: 'footprint-cluster-count', type: 'symbol', source: 'footprint-points', filter: ['has', 'point_count'], layout: { 'text-field': ['get', 'point_count_abbreviated'], 'text-size': 11 }, paint: { 'text-color': '#062019' } })
-  map.addLayer({ id: 'footprint-markers', type: 'circle', source: 'footprint-points', filter: ['!', ['has', 'point_count']], paint: { 'circle-radius': 6, 'circle-color': '#37e6a5', 'circle-stroke-color': '#06101a', 'circle-stroke-width': 2 } })
+  map.addLayer({
+    id: 'footprint-clusters', type: 'circle', source: 'footprint-points', maxzoom: FOOTPRINT_DETAIL_ZOOM,
+    filter: ['has', 'point_count'],
+    paint: {
+      'circle-color': '#37e6a5',
+      'circle-radius': ['step', ['get', 'point_count'], 15, 5, 19, 20, 24],
+      'circle-stroke-color': '#09271f', 'circle-stroke-width': 2
+    }
+  })
+  map.addLayer({
+    id: 'footprint-cluster-count', type: 'symbol', source: 'footprint-points', maxzoom: FOOTPRINT_DETAIL_ZOOM,
+    filter: ['has', 'point_count'],
+    layout: { 'text-field': ['get', 'point_count_abbreviated'], 'text-size': 11 },
+    paint: { 'text-color': '#07251d' }
+  })
+  map.addLayer({
+    id: 'footprint-single-points', type: 'circle', source: 'footprint-points', maxzoom: FOOTPRINT_DETAIL_ZOOM,
+    filter: ['!', ['has', 'point_count']],
+    paint: {
+      'circle-radius': 6,
+      'circle-color': ['match', ['get', 'visitType'], 'transit', '#ffbd59', '#37e6a5'],
+      'circle-stroke-color': '#07141d', 'circle-stroke-width': 2
+    }
+  })
+  renderFootprintMarkers()
   updateMode()
+}
+
+function validCoordinates(item) {
+  if (item.longitude == null || item.longitude === '' || item.latitude == null || item.latitude === '') return false
+  const longitude = Number(item.longitude)
+  const latitude = Number(item.latitude)
+  return Number.isFinite(longitude) && Number.isFinite(latitude) && longitude >= -180 && longitude <= 180 && latitude >= -90 && latitude <= 90
+}
+
+function clearFootprintMarkers() {
+  footprintMarkers.forEach(marker => marker.remove())
+  footprintMarkers = []
+}
+
+function renderFootprintMarkers() {
+  if (!map) return
+  clearFootprintMarkers()
+  for (const item of visibleFootprintRecords.filter(validCoordinates)) {
+    const element = document.createElement('button')
+    element.type = 'button'
+    element.className = `footprint-photo-marker ${item.visitType === 'transit' ? 'is-transit' : 'is-travel'}`
+    element.title = item.spotName || '足迹地点'
+    if (item.imageUrl) {
+      const image = document.createElement('img')
+      image.src = item.imageUrl
+      image.alt = ''
+      image.loading = 'lazy'
+      image.addEventListener('error', () => image.remove(), { once: true })
+      element.appendChild(image)
+    }
+    const fallback = document.createElement('span')
+    fallback.textContent = (item.spotName || '地').trim().slice(0, 1)
+    element.appendChild(fallback)
+    element.addEventListener('click', event => {
+      event.stopPropagation()
+      emit('select-place', item)
+    })
+    const marker = new maplibregl.Marker({ element, anchor: 'center' })
+      .setLngLat([Number(item.longitude), Number(item.latitude)])
+      .addTo(map)
+    footprintMarkers.push(marker)
+  }
+  updateFootprintMarkerVisibility()
+}
+
+function updateFootprintMarkerVisibility() {
+  const visible = mapType.value === 'foot' && map?.getZoom() >= FOOTPRINT_DETAIL_ZOOM
+  footprintMarkers.forEach(marker => {
+    marker.getElement().style.display = visible ? '' : 'none'
+  })
 }
 
 function updateMode() {
@@ -266,7 +365,8 @@ function updateMode() {
   map.setLayoutProperty('explored-outline', 'visibility', footMode ? 'visible' : 'none')
   map.setLayoutProperty('footprint-clusters', 'visibility', footMode ? 'visible' : 'none')
   map.setLayoutProperty('footprint-cluster-count', 'visibility', footMode ? 'visible' : 'none')
-  map.setLayoutProperty('footprint-markers', 'visibility', footMode ? 'visible' : 'none')
+  map.setLayoutProperty('footprint-single-points', 'visibility', footMode ? 'visible' : 'none')
+  updateFootprintMarkerVisibility()
   map.getSource('travel-lines').setData(mapType.value === 'flight' ? flightFeatures : mapType.value === 'train' ? trainFeatures : EMPTY_COLLECTION)
   if (mapType.value === 'flight') startPlaneAnimation()
   else stopPlaneAnimation()
@@ -380,29 +480,86 @@ function stopTrainAnimation() {
 }
 
 async function loadTravelData() {
-  const results = await Promise.allSettled([getVisitedCityCodes(), getTicketData('flight'), getTicketData('train'), getFootprints()])
+  const results = await Promise.allSettled([
+    getTickets('flight', props.selectedYear),
+    getTickets('train', props.selectedYear),
+    getFootprints(props.selectedYear)
+  ])
   const value = index => results[index].status === 'fulfilled' ? results[index].value?.data || [] : []
-  const cityCodes = value(0)
-  try {
-    exploredRegions = cityCodes.length ? await getRegionBoundaries(cityCodes) : EMPTY_COLLECTION
-  } catch {
-    exploredRegions = EMPTY_COLLECTION
+  flightRecords = value(0)
+  trainRecords = value(1)
+  footprintRecords = value(2)
+  if (String(props.selectedYear) === 'all') {
+    const years = [...new Set([
+      ...footprintRecords.map(item => item.visitTime),
+      ...flightRecords.map(item => getTicketTime(item, 'flight')),
+      ...trainRecords.map(item => getTicketTime(item, 'train'))
+    ].map(value => String(value || '').slice(0, 4)).filter(year => /^\d{4}$/.test(year)))]
+      .map(Number).sort((left, right) => left - right)
+    emit('footprint-timeline', years)
   }
-  flightFeatures = lineCollection(value(1), 'flight')
-  trainFeatures = lineCollection(value(2), 'train')
+  await updateTravelDataByYear()
+}
+
+function getTicketTime(record, kind) {
+  const directValue = kind === 'flight'
+    ? record.takeoffTime || record.Time
+    : record.departureDatetime || record.Time
+  if (directValue) return directValue
+  const label = kind === 'flight' ? '起飞时间' : '发车时间'
+  return record.more?.find(item => item.label === label)?.value || ''
+}
+
+function filterByYear(records, timeGetter) {
+  if (String(props.selectedYear) === 'all') return records
+  const year = String(props.selectedYear)
+  return records.filter(record => String(timeGetter(record) || '').startsWith(year))
+}
+
+function getCityCode(adcode) {
+  const code = String(adcode || '')
+  if (!code) return null
+  if (code.length < 6) return code
+  return ['11', '12', '31', '50'].includes(code.slice(0, 2)) ? code.slice(0, 2) : code.slice(0, 4)
+}
+
+function getPlaceKey(item) {
+  if (item.spotId != null) return `id:${item.spotId}`
+  return `${item.spotName || ''}:${item.longitude || ''}:${item.latitude || ''}`
+}
+
+async function updateTravelDataByYear() {
+  const updateId = ++footprintUpdateId
+  const year = String(props.selectedYear)
+  visibleFootprintRecords = year === 'all'
+    ? footprintRecords
+    : footprintRecords.filter(item => String(item.visitTime || '').startsWith(year))
+  flightFeatures = lineCollection(filterByYear(flightRecords, item => getTicketTime(item, 'flight')), 'flight')
+  trainFeatures = lineCollection(filterByYear(trainRecords, item => getTicketTime(item, 'train')), 'train')
+
+  const cityCodes = [...new Set(visibleFootprintRecords.map(item => getCityCode(item.adcode)).filter(Boolean))]
+  let nextRegions = EMPTY_COLLECTION
+  try {
+    nextRegions = cityCodes.length ? await getRegionBoundaries(cityCodes) : EMPTY_COLLECTION
+  } catch {
+    nextRegions = EMPTY_COLLECTION
+  }
+  if (updateId !== footprintUpdateId) return
+
+  exploredRegions = nextRegions
   footprintFeatures = {
     type: 'FeatureCollection',
-    features: value(3)
-      .filter(item => Number.isFinite(Number(item.longitude)) && Number.isFinite(Number(item.latitude)))
-      .map(item => ({
-        type: 'Feature',
-        properties: {
-          title: item.spotName,
-          detail: [item.regionName, item.spotType, item.visitTime].filter(Boolean).join(' · ')
-        },
-        geometry: { type: 'Point', coordinates: [Number(item.longitude), Number(item.latitude)] }
-      }))
+    features: visibleFootprintRecords.filter(validCoordinates).map(item => ({
+      type: 'Feature',
+      properties: { spotId: item.spotId, visitType: item.visitType || 'travel' },
+      geometry: { type: 'Point', coordinates: [Number(item.longitude), Number(item.latitude)] }
+    }))
   }
+  emit('footprint-summary', {
+    cities: cityCodes.length,
+    places: new Set(visibleFootprintRecords.map(getPlaceKey)).size
+  })
+  renderFootprintMarkers()
   map?.getSource('footprint-points')?.setData(footprintFeatures)
   map?.getSource('explored-cities')?.setData(exploredRegions)
   updateMode()
@@ -424,21 +581,53 @@ onMounted(async () => {
   await loadTravelData()
   if (map.loaded()) addTravelLayers()
   popup = new maplibregl.Popup({ closeButton: false, closeOnClick: true })
-  map.on('click', event => {
-    const feature = map.queryRenderedFeatures(event.point, { layers: ['travel-routes', 'travel-points', 'flight-planes', 'train-moving-dots', 'footprint-markers', 'explored-fill'] })[0]
-    if (!feature) return
+  map.on('click', async event => {
+    const cluster = map.queryRenderedFeatures(event.point, { layers: ['footprint-clusters'] })[0]
+    if (cluster) {
+      const source = map.getSource('footprint-points')
+      const zoom = await source.getClusterExpansionZoom(cluster.properties.cluster_id)
+      map.easeTo({ center: cluster.geometry.coordinates, zoom: Math.min(zoom, FOOTPRINT_DETAIL_ZOOM) })
+      return
+    }
+    const footprint = map.queryRenderedFeatures(event.point, { layers: ['footprint-single-points'] })[0]
+    if (footprint) {
+      const place = visibleFootprintRecords.find(item => String(item.spotId) === String(footprint.properties.spotId))
+      if (place) emit('select-place', place)
+      return
+    }
+    const feature = map.queryRenderedFeatures(event.point, { layers: ['travel-routes', 'travel-points', 'flight-planes', 'train-moving-dots', 'explored-fill'] })[0]
+    if (!feature) {
+      emit('blank-click')
+      return
+    }
+    const ticketType = feature.properties.ticketType
+    if (ticketType === 'flight' || ticketType === 'train') {
+      emit('select-route', {
+        type: ticketType,
+        id: feature.properties.ticketId,
+        number: feature.properties.number || ''
+      })
+      return
+    }
     const title = feature.properties.title || feature.properties.name || '已探索地区'
     const detailText = feature.properties.number || feature.properties.detail || ''
     const detail = detailText ? `<br>${detailText}` : ''
     popup.setLngLat(event.lngLat).setHTML(`<strong>${title}</strong>${detail}`).addTo(map)
   })
+  map.on('mousemove', event => {
+    const features = map.queryRenderedFeatures(event.point, { layers: ['travel-routes', 'flight-planes', 'train-moving-dots', 'footprint-clusters', 'footprint-single-points'] })
+    map.getCanvas().style.cursor = features.length ? 'pointer' : ''
+  })
+  map.on('zoom', updateFootprintMarkerVisibility)
 })
 
 watch(mapType, updateMode)
+watch(() => props.selectedYear, loadTravelData)
 
 onBeforeUnmount(() => {
   stopPlaneAnimation()
   stopTrainAnimation()
+  clearFootprintMarkers()
   popup?.remove()
   map?.remove()
 })
@@ -447,11 +636,10 @@ onBeforeUnmount(() => {
 <style scoped>
 .map-shell {
   position: relative;
-  width: 800px;
-  height: 560px;
+  width: 100%;
+  height: 100%;
   overflow: hidden;
   background: #07101d;
-  border: 1px solid rgba(52, 210, 221, .3)
 }
 
 .map-canvas {
@@ -470,8 +658,8 @@ onBeforeUnmount(() => {
 }
 
 .map-legend {
-  left: 12px;
-  bottom: 12px;
+  right: 18px;
+  bottom: 18px;
   display: flex;
   gap: 14px;
   padding: 8px 10px
@@ -497,6 +685,28 @@ onBeforeUnmount(() => {
 .legend-swatch.train {
   background: #59d8ff
 }
+
+:global(.footprint-photo-marker) {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  overflow: hidden;
+  border: 3px solid #53e2b4;
+  border-radius: 50%;
+  background: #12372f;
+  box-shadow: 0 5px 16px rgba(0, 0, 0, .46);
+  color: #dffcf3;
+  cursor: pointer;
+  transition: border-color .18s, box-shadow .18s;
+}
+
+:global(.footprint-photo-marker:hover) { z-index: 2; box-shadow: 0 7px 22px rgba(48, 226, 180, .42); }
+:global(.footprint-photo-marker.is-transit) { border-color: #ffbd59; background: #4a3415; }
+:global(.footprint-photo-marker img) { position: absolute; inset: 0; z-index: 1; width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
+:global(.footprint-photo-marker span) { display: grid; width: 100%; height: 100%; place-items: center; font-size: 15px; font-weight: 700; }
 
 :deep(.maplibregl-ctrl-group) {
   border-radius: 4px;

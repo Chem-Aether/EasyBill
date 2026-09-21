@@ -7,14 +7,14 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 @RestController("travelTrainStationController")
-@RequestMapping("/travel/trainStations")
+@RequestMapping("/travel/trains")
 @Tag(name = "火车票管理接口", description = "按车票ID获取途径站明细（用于详情展开）")
 public class TrainStationController {
 
     @Autowired
     private TrainStationRouterService trainStationRouterService;
 
-    @GetMapping("/list/{trainId}")
+    @GetMapping("/{trainId}/stations")
     public Result listByTrainId(@PathVariable Long trainId) {
     return Result.success(trainStationRouterService.listByTrainId(trainId));
     }
