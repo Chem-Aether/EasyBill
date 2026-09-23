@@ -2,75 +2,73 @@ import axios from 'axios'
 import { ElMessage } from 'element-plus'
 import router from '@/router'
 
-// 创建实例
-const service = axios.create({
-    baseURL: "http://127.0.0.1:8081",
-    timeout: 10000
-})
+const normalizeBaseUrl = (value, name) => {
+  const url = value?.trim().replace(/\/+$/, '')
+  if (!url) throw new Error(`Missing environment variable: ${name}`)
+  return url
+}
 
-// =================== 请求拦截器 ===================
-service.interceptors.request.use(
+export const API_BASE_URL = normalizeBaseUrl(
+  import.meta.env.VITE_API_BASE_URL,
+  'VITE_API_BASE_URL',
+)
+
+export const MAP_BASE_URL = normalizeBaseUrl(
+  import.meta.env.VITE_MAP_BASE_URL,
+  'VITE_MAP_BASE_URL',
+)
+
+const attachInterceptors = (service) => {
+  service.interceptors.request.use(
     (config) => {
-        // 携带 token
-        const token = localStorage.getItem('token')
-        if (token) {
-            config.headers.token = token
-        }
-        return config
+      const token = localStorage.getItem('token')
+      if (token) config.headers.token = token
+      return config
     },
-    (error) => {
-        return Promise.reject(error)
-    }
-)
+    error => Promise.reject(error),
+  )
 
-// =================== 响应拦截器 ===================
-service.interceptors.response.use(
-    (response) => {
-        // 如果标记了 fullResponse，直接返回完整对象
-        if (response.config.fullResponse) {
-            return response;
-        }
-        // 其他接口照常返回 data，不动！
-        return response.data;
+  service.interceptors.response.use(
+    response => response.config.fullResponse ? response : response.data,
+    (error) => {
+      const response = error.response
+      if (!response) {
+        ElMessage.error('网络异常或服务器未启动')
+        return Promise.reject(error)
+      }
+
+      switch (response.status) {
+        case 401:
+          ElMessage.error('登录已过期，请重新登录')
+          localStorage.removeItem('token')
+          router.push('/login')
+          break
+        case 403:
+          ElMessage.error('无权限访问')
+          break
+        case 404:
+          ElMessage.error('接口不存在')
+          break
+        case 500:
+          ElMessage.error('服务器异常')
+          break
+        default:
+          break
+      }
+
+      return Promise.reject(error)
     },
-    (error) => {
-        // 非 2xx 进入这里：统一处理全局异常
-        const res = error.response
+  )
 
-        // 无网络 / 服务器崩了
-        if (!res) {
-            ElMessage.error('网络异常或服务器未启动')
-            return Promise.reject(error)
-        }
+  return service
+}
 
-        // 通用状态码处理（企业标准）
-        switch (res.status) {
-            case 401:
-                // token 过期 / 未登录：清空并跳登录
-                ElMessage.error('登录已过期，请重新登录')
-                localStorage.removeItem('token')
-                router.push('/login')
-                break
+export const createRequest = baseURL => attachInterceptors(axios.create({
+  baseURL,
+  timeout: 10000,
+}))
 
-            case 403:
-                ElMessage.error('无权限访问')
-                break
+export const apiRequest = createRequest(API_BASE_URL)
+export const mapRequest = createRequest(MAP_BASE_URL)
 
-            case 404:
-                ElMessage.error('接口不存在')
-                break
-
-            case 500:
-                ElMessage.error('服务器异常')
-                break
-
-            default:
-                break
-        }
-
-        // 继续把错误抛给页面 catch
-        return Promise.reject(error)
-    }
-)
-
-export default service
+export default apiRequest

@@ -44,13 +44,13 @@ import { nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import * as maplibregl from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import { forwardGeocode, reverseGeocode } from '@/modules/travel/apis/sysResource.js'
+import { MAP_BASE_URL } from '@/utils/request.js'
 
 const props = defineProps({
   longitude: { type: Number, default: null },
   latitude: { type: Number, default: null }
 })
 const emit = defineEmits(['pick', 'clear'])
-const MAP_SERVER = import.meta.env.VITE_MAP_SERVER || 'http://127.0.0.1:8765'
 const mapContainer = ref(null)
 const selectedPoi = ref('')
 const poiOptions = ref([])
@@ -77,7 +77,7 @@ function createStyle() {
   return {
     version: 8,
     sources: {
-      basemap: { type: 'vector', url: `${MAP_SERVER}/api/tiles/tilejson.json` }
+      basemap: { type: 'vector', url: `${MAP_BASE_URL}/api/tiles/tilejson.json` }
     },
     layers: [
       { id: 'picker-background', type: 'background', paint: { 'background-color': '#e8edf0' } },

@@ -211,20 +211,9 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getFlightList, deleteFlightTicketById, insertFlightTicket, updateFlightTicketById } from '@/modules/travel/apis/flightTickets.js'
-import { useAirportStore } from '@/modules/travel/stores/allAirportsList.js'
+import { useResourceSearch } from '@/modules/travel/composables/useResourceSearch.js'
 
-const airportStore = useAirportStore()
-
-// 搜索机场（展示：名称(ICAO)）
-const queryAirport = async (queryString, cb) => {
-  if (!queryString?.trim()) return cb([])
-  try {
-    const suggestions = await airportStore.search(queryString)
-    if (suggestions) cb(suggestions)
-  } catch {
-    cb([])
-  }
-}
+const { queryAirport } = useResourceSearch()
 
 // 选择后：输入框显示中文(ICAO)，但真实提交字段保存 ICAO
 // type: queryDeparture | queryArrival | formDeparture | formArrival | formStopover

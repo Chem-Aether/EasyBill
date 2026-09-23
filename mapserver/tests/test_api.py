@@ -9,6 +9,19 @@ from main import app
 client = TestClient(app)
 
 
+def test_catalog_search_is_keyword_driven_and_limited():
+    empty_airports = client.get("/api/airports/search")
+    assert empty_airports.status_code == 200
+    assert empty_airports.json()["data"] == []
+
+    stations = client.get("/api/stations/search", params={"keyword": "南京", "limit": 1})
+    assert stations.status_code == 200
+    assert len(stations.json()["data"]) <= 1
+
+    invalid_limit = client.get("/api/airports/search", params={"keyword": "北京", "limit": 51})
+    assert invalid_limit.status_code == 422
+
+
 def test_geocoding_and_boundaries():
     reverse = client.get("/api/geocode/reverse", params={"lng": 118.8489, "lat": 32.0416})
     assert reverse.status_code == 200

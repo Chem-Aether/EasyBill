@@ -17,8 +17,8 @@ import 'maplibre-gl/dist/maplibre-gl.css'
 import { getFootprints, getTickets } from '@/modules/travel/apis/travel.js'
 import { getRegionBoundaries } from '@/modules/travel/apis/sysResource.js'
 import { useTravleStore } from '@/modules/travel/stores/TravelStore.js'
+import { MAP_BASE_URL } from '@/utils/request.js'
 
-const MAP_SERVER = import.meta.env.VITE_MAP_SERVER || 'http://127.0.0.1:8765'
 const EMPTY_COLLECTION = { type: 'FeatureCollection', features: [] }
 const FOOTPRINT_DETAIL_ZOOM = 9
 const props = defineProps({
@@ -80,7 +80,7 @@ function createStyle() {
   return {
     version: 8,
     sources: {
-      basemap: { type: 'vector', url: `${MAP_SERVER}/api/tiles/tilejson.json`, attribution: '© OpenStreetMap contributors' },
+      basemap: { type: 'vector', url: `${MAP_BASE_URL}/api/tiles/tilejson.json`, attribution: '© OpenStreetMap contributors' },
     },
     layers: [
       { id: 'background', type: 'background', paint: { 'background-color': '#07101d' } },

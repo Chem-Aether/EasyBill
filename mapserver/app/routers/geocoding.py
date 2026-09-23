@@ -12,16 +12,14 @@ def valid(longitude, latitude):
     return -180 <= longitude <= 180 and -90 <= latitude <= 90
 
 
-@router.get("/reverse")
-def reverse(longitude: float | None = None, latitude: float | None = None, lng: float | None = None, lat: float | None = None):
-    longitude = longitude if longitude is not None else lng
-    latitude = latitude if latitude is not None else lat
+@router.get("/reverse", summary="根据经纬度查询行政区划信息")
+def reverse(longitude: float | None = None, latitude: float | None = None):
     if longitude is None or latitude is None or not valid(longitude, latitude):
         raise HTTPException(400, "经纬度参数无效")
     return payload(regions.reverse(longitude, latitude))
 
 
-@router.post("/reverse/batch")
+@router.post("/reverse/batch", summary="根据经纬度批量查询行政区划信息")
 def reverse_batch(body: PointsRequest):
     results = []
     for item in body.points:
@@ -36,15 +34,14 @@ def reverse_batch(body: PointsRequest):
     return payload(results)
 
 
-@router.get("/forward")
+@router.get("/forward", summary="根据关键字查询行政区划信息或兴趣点")
 def forward(
     q: str | None = None,
-    keyword: str | None = None,
     type: str = Query("all", pattern="^(all|region|poi)$"),
     level: int = Query(0, ge=0, le=3),
     limit: int = Query(10, ge=1, le=50),
 ):
-    text = (q or keyword or "").strip()[:80]
+    text = (q or "").strip()[:80]
     if not text:
         return payload([])
     found = []

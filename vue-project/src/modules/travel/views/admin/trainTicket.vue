@@ -267,9 +267,9 @@ import {
   deleteTrainTicket,
   getTrainStationsByTrainId
 } from '@/modules/travel/apis/trainTickets.js'
-import { useTrainStationStore } from '@/modules/travel/stores/allTrainStationsList.js'
+import { useResourceSearch } from '@/modules/travel/composables/useResourceSearch.js'
 
-const stationStore = useTrainStationStore()
+const { queryTrainStation: queryStation } = useResourceSearch()
 const loading = ref(true)
 const trainList = ref([])
 
@@ -332,16 +332,6 @@ const loadData = async () => {
   })
   pageInfo.value = res.page || { total: (res.data || []).length }
   loading.value = false
-}
-
-const queryStation = async (q, cb) => {
-  if (!q?.trim()) return cb([])
-  try {
-    const suggestions = await stationStore.search(q)
-    if (suggestions) cb(suggestions)
-  } catch {
-    cb([])
-  }
 }
 
 const filteredList = computed(() => trainList.value)

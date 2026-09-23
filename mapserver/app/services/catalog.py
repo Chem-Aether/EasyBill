@@ -12,27 +12,27 @@ address, website, opening_hours AS openingHours, wikidata, importance
 """
 
 
-def search_airports(keyword):
+def search_airports(keyword, limit=20):
     if not keyword:
         return []
     like, upper = f"%{keyword[:80]}%", keyword.upper()
     return all_rows(
         "SELECT icao, iata, name, city, attr, longitude, latitude FROM airport "
         "WHERE name LIKE ? OR icao LIKE ? OR iata LIKE ? OR city LIKE ? "
-        "ORDER BY CASE WHEN name = ? OR icao = ? OR iata = ? THEN 0 ELSE 1 END, name LIMIT 20",
-        (like, f"%{upper}%", f"%{upper}%", like, keyword, upper, upper),
+        "ORDER BY CASE WHEN name = ? OR icao = ? OR iata = ? THEN 0 ELSE 1 END, name LIMIT ?",
+        (like, f"%{upper}%", f"%{upper}%", like, keyword, upper, upper, limit),
     )
 
 
-def search_stations(keyword):
+def search_stations(keyword, limit=20):
     if not keyword:
         return []
     like, upper = f"%{keyword[:80]}%", keyword.upper()
     return all_rows(
         "SELECT name, code, city, region, province, longitude, latitude FROM train_stations "
         "WHERE name LIKE ? OR code LIKE ? OR city LIKE ? "
-        "ORDER BY CASE WHEN name = ? OR code = ? THEN 0 ELSE 1 END, name LIMIT 20",
-        (like, f"%{upper}%", like, keyword, upper),
+        "ORDER BY CASE WHEN name = ? OR code = ? THEN 0 ELSE 1 END, name LIMIT ?",
+        (like, f"%{upper}%", like, keyword, upper, limit),
     )
 
 
