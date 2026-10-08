@@ -1,4 +1,4 @@
-import request from '@/utils/request.js';
+import { billRequest as request } from '@/utils/request.js'
 
 export const getCategories = () => {
     return request({

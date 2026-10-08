@@ -5,24 +5,24 @@
       <el-button circle text aria-label="关闭地点详情" @click="$emit('close')">×</el-button>
     </header>
     <div class="place-scroll">
-      <div class="place-cover" :class="{ empty: !place.imageUrl }">
-        <img v-if="place.imageUrl" :src="place.imageUrl" :alt="place.spotName" @error="imageFailed = true" v-show="!imageFailed" />
-        <span v-if="!place.imageUrl || imageFailed">{{ (place.spotName || '地').slice(0, 1) }}</span>
+      <div class="place-cover" :class="{ empty: !place.coverImagePath }">
+        <img v-if="place.coverImagePath" :src="place.coverImagePath" :alt="place.placeName" @error="imageFailed = true" v-show="!imageFailed" />
+        <span v-if="!place.coverImagePath || imageFailed">{{ (place.placeName || '地').slice(0, 1) }}</span>
       </div>
       <div class="place-title">
-        <div><h3>{{ place.spotName || '未命名地点' }}</h3><p>{{ place.regionName || '地区未知' }}</p></div>
+        <div><h3>{{ place.placeName || '未命名地点' }}</h3><p>{{ place.regionName || '地区未知' }}</p></div>
         <el-tag :type="place.visitType === 'transit' ? 'warning' : 'success'" effect="dark">
           {{ place.visitType === 'transit' ? '途经地' : '旅行地' }}
         </el-tag>
       </div>
       <el-descriptions :column="1" border class="place-fields">
-        <el-descriptions-item label="地点类型">{{ place.spotType || '-' }}</el-descriptions-item>
-        <el-descriptions-item label="到访日期">{{ place.visitTime || '未记录' }}</el-descriptions-item>
+        <el-descriptions-item label="地点类型">{{ place.poiReference || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="到访日期">{{ place.visitDate || '未记录' }}</el-descriptions-item>
         <el-descriptions-item label="地图坐标">{{ coordinateText }}</el-descriptions-item>
       </el-descriptions>
       <section class="travel-note">
         <h4>旅行心得</h4>
-        <p>{{ place.travelNote || '还没有记录旅行心得' }}</p>
+        <p>{{ place.note || '还没有记录旅行心得' }}</p>
       </section>
     </div>
   </section>
@@ -44,7 +44,7 @@ const coordinateText = computed(() => {
     ? `${longitude.toFixed(6)}, ${latitude.toFixed(6)}`
     : '未定位（已计入统计）'
 })
-watch(() => props.place?.spotId, () => { imageFailed.value = false })
+watch(() => props.place?.footprintId, () => { imageFailed.value = false })
 </script>
 
 <style scoped>

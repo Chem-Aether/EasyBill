@@ -17,7 +17,7 @@ import {getFootprints} from '@/modules/travel/apis/travel.js'
 
 const Total = ref();
 getFootprints().then(res => {
-  const codes = (res.data || []).map(item => String(item.adcode || '')).filter(code => code.length >= 6)
+  const codes = (res.data || []).map(item => String(item.regionCode || '')).filter(code => code.length >= 6)
   Total.value = {
     province: new Set(codes.map(code => code.slice(0, 2))).size,
     city: new Set(codes.map(code => ['11', '12', '31', '50'].includes(code.slice(0, 2)) ? code.slice(0, 2) : code.slice(0, 4))).size,

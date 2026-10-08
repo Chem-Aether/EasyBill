@@ -1,4 +1,5 @@
-import { searchAirports, searchTrainStations } from '@/modules/travel/apis/sysResource.js'
+import { searchAirports } from '@/modules/travel/apis/sysResource.js'
+import { searchTrainStations } from '@/modules/travel/apis/railway.js'
 
 const normalizeKeyword = keyword => keyword?.trim() || ''
 

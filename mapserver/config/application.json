@@ -10,16 +10,10 @@
   },
   "storage": {
     "data_dir": "data",
-    "database": "data/geo.sqlite",
-    "imports": {
-      "osm_dir": "data/source/osm",
-      "boundary_dir": "data/source/boundaries",
-      "boundary_files": {
-        "province": "china.json",
-        "city": "中国_市.json",
-        "district": "中国_县.json"
-      }
-    }
+    "railway_network": "data/china_railway_network.gpkg",
+    "admin_boundaries": "data/china_admin_boundaries.gpkg",
+    "airports": "data/airports.gpkg",
+    "poi": "data/poi.gpkg"
   },
   "tiles": {
     "cache_size": 512,

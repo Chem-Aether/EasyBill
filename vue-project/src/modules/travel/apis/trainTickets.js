@@ -1,4 +1,4 @@
-import request from '@/utils/request.js'
+import { travelRequest as request } from '@/utils/request.js'
 
 // 列表（支持分页/条件查询）
 export const getTrainList = (params = {}) =>
@@ -27,30 +27,20 @@ export const getTrainTicket = (trainId) => {
 }
 
 // 获取某个车票的途经站明细（展开时用）
-export const getTrainStationsByTrainId = (trainId) => {
-    return request({
-        url: `/travel/trains/${trainId}/stations`,
-        method: 'GET'
-    })
-}
-
-// 新增车票（支持同时保存途经站）
-// ticket: TrainRecord
-// stations: TrainStationRecord[]
-export const addTrainTicket = ({ ticket, stations } = {}) => {
+export const addTrainTicket = (data) => {
     return request({
         url: '/travel/trains',
         method: 'POST',
-        data: { ticket, stations }
+        data
     })
 }
 
 // 更新车票（支持同时保存途经站最终态）
-export const updateTrainTicket = ({ ticket, stations } = {}) => {
+export const updateTrainTicket = (data) => {
     return request({
-        url: `/travel/trains/${ticket.trainId}`,
+        url: `/travel/trains/${data.trainId}`,
         method: 'PUT',
-        data: { ticket, stations }
+        data
     })
 }
 
@@ -58,5 +48,19 @@ export const deleteTrainTicket = (trainId) => {
     return request({
         url: `/travel/trains/${trainId}`,
         method: 'DELETE'
+    })
+}
+
+export const deleteTrainTickets = (ids) => request({
+    url: '/travel/trains/batch',
+    method: 'DELETE',
+    data: ids
+})
+
+export const sampleTrainRoute = (data) => {
+    return request({
+        url: '/travel/trains/route/sample',
+        method: 'POST',
+        data
     })
 }

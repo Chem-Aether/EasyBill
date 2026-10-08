@@ -1,4 +1,4 @@
-import request from '@/utils/request'; // 引入封装的 axios 实例
+import { authRequest as request } from '@/utils/request'
 
 // 获取验证码接口
 export const captcha = () => {

@@ -1,0 +1,20 @@
+server:
+  port: ${TRAVEL_PORT:8084}
+spring:
+  application:
+    name: travel-service
+  servlet:
+    multipart:
+      max-file-size: 100MB
+      max-request-size: 110MB
+  datasource:
+    driver-class-name: org.postgresql.Driver
+    url: ${TRAVEL_DB_URL:jdbc:postgresql://localhost:5432/travel_database}
+    username: ${TRAVEL_DB_USERNAME:postgres}
+    password: ${TRAVEL_DB_PASSWORD:123456}
+mapserver:
+  base-url: ${MAP_BASE_URL:http://127.0.0.1:8765}
+spiderserver:
+  base-url: ${SPIDER_BASE_URL:http://127.0.0.1:8082}
+springdoc:
+  packages-to-scan: com.travel

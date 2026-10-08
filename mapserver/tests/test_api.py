@@ -13,19 +13,48 @@ def test_catalog_search_is_keyword_driven_and_limited():
     empty_airports = client.get("/api/airports/search")
     assert empty_airports.status_code == 200
     assert empty_airports.json()["data"] == []
+    airports = client.get("/api/airports/search", params={"keyword": "PEK"})
+    assert airports.status_code == 200
+    assert airports.json()["data"]
+    assert airports.json()["data"][0]["icao"] == "ZBAA"
+    assert airports.json()["data"][0]["longitude"] > 0
 
-    stations = client.get("/api/stations/search", params={"keyword": "南京", "limit": 1})
+    by_code = client.post("/api/airports/by-codes", json={"codes": ["PEK"]})
+    assert by_code.status_code == 200
+    assert by_code.json()["data"][0]["icao"] == "ZBAA"
+
+    stations = client.get("/api/railway/stations/search", params={"keyword": "南京", "limit": 1})
     assert stations.status_code == 200
     assert len(stations.json()["data"]) <= 1
+    if stations.json()["data"]:
+        station = stations.json()["data"][0]
+        assert station["name"]
+        assert -180 <= station["longitude"] <= 180
+        assert -90 <= station["latitude"] <= 90
 
     invalid_limit = client.get("/api/airports/search", params={"keyword": "北京", "limit": 51})
     assert invalid_limit.status_code == 422
 
 
 def test_geocoding_and_boundaries():
-    reverse = client.get("/api/geocode/reverse", params={"lng": 118.8489, "lat": 32.0416})
+    region = client.get("/api/regions/320102")
+    assert region.status_code == 200
+    assert region.json()["data"]["code"] == "320102"
+    assert region.json()["data"]["parentCode"] == "3201"
+
+    region_search = client.get("/api/regions/search", params={"keyword": "南京", "level": 2})
+    assert region_search.status_code == 200
+    assert region_search.json()["data"]
+
+    reverse = client.get("/api/geocode/reverse", params={"longitude": 118.8489, "latitude": 32.0416})
     assert reverse.status_code == 200
     assert reverse.json()["data"]["district"]["code"] == "320102"
+
+    batch = client.post("/api/geocode/reverse/batch", json={"points": [
+        {"id": "footprint:1", "longitude": 118.8489, "latitude": 32.0416}
+    ]})
+    assert batch.status_code == 200
+    assert batch.json()["data"][0]["id"] == "footprint:1"
 
     forward = client.get("/api/geocode/forward", params={"q": "中山陵", "type": "poi", "limit": 2})
     assert forward.status_code == 200
@@ -44,6 +73,22 @@ def test_geocoding_and_boundaries():
     assert boundary.status_code == 200
     assert boundary.headers["content-type"].startswith("application/geo+json")
     assert boundary.json()["type"] == "FeatureCollection"
+
+
+def test_railway_route_sampling_uses_local_network():
+    stations = client.get("/api/railway/stations/search", params={"keyword": "南京南", "limit": 5})
+    assert stations.status_code == 200
+    assert stations.json()["data"]
+
+    response = client.post("/api/railway/routes/sample", json={
+        "trainCode": "G1", "stations": ["南京南", "南京"]
+    })
+    assert response.status_code == 200
+    result = response.json()["data"]
+    assert result["geometry"]["type"] == "MultiLineString"
+    assert len(result["geometry"]["coordinates"][0]) > 2
+    assert [station["stationName"] for station in result["stations"]] == ["南京南", "南京"]
+    assert result["unmatchedStations"] == []
 
 
 def _tile_at(longitude, latitude, zoom):

@@ -2,9 +2,13 @@
   <div class="map-shell">
     <div ref="mapContainer" class="map-canvas"></div>
     <div class="map-legend">
-      <span><i class="legend-swatch explored"></i>已探索城市</span>
-      <span v-if="mapType === 'flight'"><i class="legend-swatch flight"></i>航线记录</span>
-      <span v-if="mapType === 'train'"><i class="legend-swatch train"></i>铁路记录</span>
+      <template v-if="visibleLayers.includes('foot')">
+        <span><i class="legend-swatch explored"></i>旅行地区</span>
+        <span><i class="legend-swatch transit-region"></i>途经地区</span>
+        <span><i class="legend-swatch travel-place"></i>旅行地点</span>
+      </template>
+      <span v-if="visibleLayers.includes('flight')"><i class="legend-swatch flight"></i>航线记录</span>
+      <span v-if="visibleLayers.includes('train')"><i class="legend-swatch train"></i>铁路记录</span>
     </div>
   </div>
 </template>
@@ -29,7 +33,7 @@ const props = defineProps({
 })
 const emit = defineEmits(['select-route', 'select-place', 'blank-click', 'footprint-summary', 'footprint-timeline'])
 const store = useTravleStore()
-const { mapType } = storeToRefs(store)
+const { visibleLayers } = storeToRefs(store)
 const mapContainer = ref(null)
 let map
 let popup
@@ -60,19 +64,6 @@ function baseLayers(source, prefix) {
     { id: `${prefix}-buildings`, type: 'fill', source, 'source-layer': 'buildings', minzoom: 12, paint: { 'fill-color': '#263c49', 'fill-outline-color': '#3f5965' } },
     { id: `${prefix}-road-labels`, type: 'symbol', source, 'source-layer': 'roads', minzoom: 11, layout: { 'symbol-placement': 'line', 'text-field': textName, 'text-size': 11 }, paint: { 'text-color': '#c6d3d7', 'text-halo-color': '#071019', 'text-halo-width': 1.4 } },
     { id: `${prefix}-place-labels`, type: 'symbol', source, 'source-layer': 'places', minzoom: 2, layout: { 'text-field': textName, 'text-size': ['interpolate', ['linear'], ['zoom'], 2, 10, 9, 15] }, paint: { 'text-color': '#dce9ec', 'text-halo-color': '#071019', 'text-halo-width': 1.6 } },
-    {
-      id: `${prefix}-railways`,
-      type: 'line',
-      source,
-      'source-layer': 'roads',
-      minzoom: 1,
-      filter: ['==', ['get', 'kind'], 'rail'], paint: {
-        'line-color': '#e05a5a',
-        'line-width': ['interpolate', ['linear'], ['zoom'], 5, 0.6, 10, 1.5, 14, 4],
-        'line-opacity': 0.85,
-        'line-dasharray': [4, 2]
-      }
-    },
   ]
 }
 
@@ -104,35 +95,40 @@ function lineCollection(records, kind) {
     }
   }
   for (const record of records) {
-    const from = [Number(record.fromLongitude), Number(record.fromLatitude)]
-    const to = [Number(record.toLongitude), Number(record.toLatitude)]
-    if (![...from, ...to].every(Number.isFinite)) continue
     if (kind === 'train') {
       const routeStations = Array.isArray(record.routeStations)
         ? record.routeStations
             .map(station => ({ name: station.name, coordinates: [Number(station.longitude), Number(station.latitude)] }))
             .filter(station => station.coordinates.every(Number.isFinite))
         : []
-      const stations = routeStations.length >= 2
-        ? routeStations
-        : [{ name: record.From, coordinates: from }, { name: record.To, coordinates: to }]
-      for (let index = 0; index < stations.length - 1; index++) {
-        const start = stations[index]
-        const end = stations[index + 1]
+      const stations = routeStations
+      let geometry = null
+      try {
+        geometry = typeof record.routeGeoJson === 'string' ? JSON.parse(record.routeGeoJson) : record.routeGeoJson
+      } catch {
+        geometry = null
+      }
+      const lines = geometry?.type === 'MultiLineString'
+        ? geometry.coordinates
+        : geometry?.type === 'LineString' ? [geometry.coordinates] : []
+      const fallbackLines = stations.length >= 2
+        ? stations.slice(0, -1).map((station, index) => [station.coordinates, stations[index + 1].coordinates])
+        : []
+      ;(lines.length ? lines : fallbackLines).forEach((coordinates, index) => {
         features.push({
           type: 'Feature',
           properties: {
             kind: 'train',
-            title: `${start.name} → ${end.name}`,
+            title: `${record.From} → ${record.To}`,
             number: record.Number || '',
             ticketType: 'train',
             ticketId: record.trainId,
             trainId: record.trainId,
             segmentIndex: index
           },
-          geometry: { type: 'LineString', coordinates: [start.coordinates, end.coordinates] }
+          geometry: { type: 'LineString', coordinates }
         })
-      }
+      })
       stations.forEach((station, index) => {
         const endpoint = index === 0 || index === stations.length - 1
         const existing = points.get(station.name)
@@ -141,6 +137,9 @@ function lineCollection(records, kind) {
       })
       continue
     }
+    const from = [Number(record.fromLongitude), Number(record.fromLatitude)]
+    const to = [Number(record.toLongitude), Number(record.toLatitude)]
+    if (![...from, ...to].every(Number.isFinite)) continue
     let lane = 0
     if (kind === 'flight') {
       const key = routeKey(from, to)
@@ -269,13 +268,14 @@ function addTravelLayers() {
     data: footprintFeatures,
     cluster: true,
     clusterMaxZoom: FOOTPRINT_DETAIL_ZOOM - 1,
-    clusterRadius: 52
+    clusterRadius: 40
   })
-  map.addLayer({ id: 'explored-fill', type: 'fill', source: 'explored-cities', paint: { 'fill-color': '#37e6a5', 'fill-opacity': 0.38 } })
-  map.addLayer({ id: 'explored-outline', type: 'line', source: 'explored-cities', paint: { 'line-color': '#7effcf', 'line-width': 1.5, 'line-opacity': 0.9 } })
+  map.addLayer({ id: 'explored-fill', type: 'fill', source: 'explored-cities', paint: { 'fill-color': ['match', ['get', 'visitType'], 'transit', '#79c8ff', '#37e6a5'], 'fill-opacity': ['match', ['get', 'visitType'], 'transit', 0.28, 0.38] } })
+  map.addLayer({ id: 'explored-outline', type: 'line', source: 'explored-cities', paint: { 'line-color': ['match', ['get', 'visitType'], 'transit', '#a7dcff', '#7effcf'], 'line-width': 1.5, 'line-opacity': 0.9 } })
   map.addLayer({ id: 'flight-route-glow', type: 'line', source: 'travel-lines', filter: ['==', ['get', 'kind'], 'flight'], paint: { 'line-color': '#ffbd59', 'line-width': 7, 'line-opacity': 0.18, 'line-blur': 4 } })
   map.addLayer({ id: 'travel-routes', type: 'line', source: 'travel-lines', filter: ['==', ['geometry-type'], 'LineString'], paint: { 'line-color': ['match', ['get', 'kind'], 'flight', '#ffbd59', '#59d8ff'], 'line-width': 2.4, 'line-opacity': 0.92, 'line-dasharray': [2, 1.2] } })
-  map.addLayer({ id: 'travel-points', type: 'circle', source: 'travel-lines', filter: ['in', ['get', 'kind'], ['literal', ['flight-point', 'train-point', 'train-waypoint']]], paint: { 'circle-radius': ['match', ['get', 'kind'], 'train-waypoint', 2.5, 5], 'circle-color': ['match', ['get', 'kind'], 'flight-point', '#ffbd59', '#59d8ff'], 'circle-stroke-color': '#06101a', 'circle-stroke-width': ['match', ['get', 'kind'], 'train-waypoint', 1, 2] } })
+  map.addLayer({ id: 'travel-points', type: 'circle', source: 'travel-lines', filter: ['in', ['get', 'kind'], ['literal', ['flight-point', 'train-point', 'train-waypoint']]], paint: { 'circle-radius': ['match', ['get', 'kind'], 'train-waypoint', 4, 6], 'circle-color': ['match', ['get', 'kind'], 'flight-point', '#ffbd59', 'train-waypoint', '#b7f4ff', '#59d8ff'], 'circle-stroke-color': '#06101a', 'circle-stroke-width': ['match', ['get', 'kind'], 'train-waypoint', 1.4, 2] } })
+  map.addLayer({ id: 'train-station-labels', type: 'symbol', source: 'travel-lines', minzoom: 5.5, filter: ['in', ['get', 'kind'], ['literal', ['train-point', 'train-waypoint']]], layout: { 'text-field': ['get', 'title'], 'text-size': ['match', ['get', 'kind'], 'train-waypoint', 10, 11], 'text-offset': [0, 1.15], 'text-anchor': 'top', 'text-optional': true }, paint: { 'text-color': '#d8f7ff', 'text-halo-color': '#07101d', 'text-halo-width': 1.5 } })
   map.addLayer({ id: 'flight-plane-glow', type: 'circle', source: 'animated-planes', paint: { 'circle-radius': 11, 'circle-color': '#ffbd59', 'circle-opacity': 0.22, 'circle-blur': 0.75 } })
   map.addLayer({ id: 'flight-planes', type: 'symbol', source: 'animated-planes', layout: { 'icon-image': 'flight-plane-icon', 'icon-size': 0.72, 'icon-rotate': ['get', 'bearing'], 'icon-rotation-alignment': 'map', 'icon-pitch-alignment': 'map', 'icon-allow-overlap': true, 'icon-ignore-placement': true } })
   map.addLayer({ id: 'train-dot-glow', type: 'circle', source: 'animated-train-dots', paint: { 'circle-radius': 8, 'circle-color': '#59d8ff', 'circle-opacity': 0.2, 'circle-blur': 0.8 } })
@@ -285,22 +285,23 @@ function addTravelLayers() {
     filter: ['has', 'point_count'],
     paint: {
       'circle-color': '#37e6a5',
-      'circle-radius': ['step', ['get', 'point_count'], 15, 5, 19, 20, 24],
-      'circle-stroke-color': '#09271f', 'circle-stroke-width': 2
+      'circle-radius': ['step', ['get', 'point_count'], 10, 5, 12, 20, 14],
+      'circle-opacity': 0.76,
+      'circle-stroke-color': '#a5f5db', 'circle-stroke-width': 1.25
     }
   })
   map.addLayer({
     id: 'footprint-cluster-count', type: 'symbol', source: 'footprint-points', maxzoom: FOOTPRINT_DETAIL_ZOOM,
     filter: ['has', 'point_count'],
-    layout: { 'text-field': ['get', 'point_count_abbreviated'], 'text-size': 11 },
-    paint: { 'text-color': '#07251d' }
+    layout: { 'text-field': ['get', 'point_count_abbreviated'], 'text-size': 10 },
+    paint: { 'text-color': '#eafff7', 'text-halo-color': '#124d3e', 'text-halo-width': 1 }
   })
   map.addLayer({
     id: 'footprint-single-points', type: 'circle', source: 'footprint-points', maxzoom: FOOTPRINT_DETAIL_ZOOM,
     filter: ['!', ['has', 'point_count']],
     paint: {
       'circle-radius': 6,
-      'circle-color': ['match', ['get', 'visitType'], 'transit', '#ffbd59', '#37e6a5'],
+      'circle-color': '#37e6a5',
       'circle-stroke-color': '#07141d', 'circle-stroke-width': 2
     }
   })
@@ -323,21 +324,21 @@ function clearFootprintMarkers() {
 function renderFootprintMarkers() {
   if (!map) return
   clearFootprintMarkers()
-  for (const item of visibleFootprintRecords.filter(validCoordinates)) {
+  for (const item of visibleFootprintRecords.filter(item => item.visitType !== 'transit' && validCoordinates(item))) {
     const element = document.createElement('button')
     element.type = 'button'
-    element.className = `footprint-photo-marker ${item.visitType === 'transit' ? 'is-transit' : 'is-travel'}`
-    element.title = item.spotName || '足迹地点'
-    if (item.imageUrl) {
+    element.className = 'footprint-photo-marker is-travel'
+    element.title = item.placeName || '足迹地点'
+    if (item.coverImagePath) {
       const image = document.createElement('img')
-      image.src = item.imageUrl
+      image.src = item.coverImagePath
       image.alt = ''
       image.loading = 'lazy'
       image.addEventListener('error', () => image.remove(), { once: true })
       element.appendChild(image)
     }
     const fallback = document.createElement('span')
-    fallback.textContent = (item.spotName || '地').trim().slice(0, 1)
+    fallback.textContent = (item.placeName || '地').trim().slice(0, 1)
     element.appendChild(fallback)
     element.addEventListener('click', event => {
       event.stopPropagation()
@@ -352,7 +353,7 @@ function renderFootprintMarkers() {
 }
 
 function updateFootprintMarkerVisibility() {
-  const visible = mapType.value === 'foot' && map?.getZoom() >= FOOTPRINT_DETAIL_ZOOM
+  const visible = visibleLayers.value.includes('foot') && map?.getZoom() >= FOOTPRINT_DETAIL_ZOOM
   footprintMarkers.forEach(marker => {
     marker.getElement().style.display = visible ? '' : 'none'
   })
@@ -360,17 +361,22 @@ function updateFootprintMarkerVisibility() {
 
 function updateMode() {
   if (!map?.getSource('travel-lines')) return
-  const footMode = mapType.value === 'foot'
+  const layers = new Set(visibleLayers.value)
+  const footMode = layers.has('foot')
   map.setLayoutProperty('explored-fill', 'visibility', footMode ? 'visible' : 'none')
   map.setLayoutProperty('explored-outline', 'visibility', footMode ? 'visible' : 'none')
   map.setLayoutProperty('footprint-clusters', 'visibility', footMode ? 'visible' : 'none')
   map.setLayoutProperty('footprint-cluster-count', 'visibility', footMode ? 'visible' : 'none')
   map.setLayoutProperty('footprint-single-points', 'visibility', footMode ? 'visible' : 'none')
   updateFootprintMarkerVisibility()
-  map.getSource('travel-lines').setData(mapType.value === 'flight' ? flightFeatures : mapType.value === 'train' ? trainFeatures : EMPTY_COLLECTION)
-  if (mapType.value === 'flight') startPlaneAnimation()
+  const routeFeatures = [
+    ...(layers.has('flight') ? flightFeatures.features : []),
+    ...(layers.has('train') ? trainFeatures.features : [])
+  ]
+  map.getSource('travel-lines').setData({ type: 'FeatureCollection', features: routeFeatures })
+  if (layers.has('flight')) startPlaneAnimation()
   else stopPlaneAnimation()
-  if (mapType.value === 'train') startTrainAnimation()
+  if (layers.has('train')) startTrainAnimation()
   else stopTrainAnimation()
 }
 
@@ -405,7 +411,7 @@ function interpolateRoute(coordinates, position) {
 
 function animatePlanes(timestamp) {
   planeAnimationFrame = 0
-  if (!map || mapType.value !== 'flight' || !map.getSource('animated-planes')) return
+  if (!map || !visibleLayers.value.includes('flight') || !map.getSource('animated-planes')) return
   if (timestamp - lastPlaneFrame >= 40) {
     map.getSource('animated-planes').setData(planeCollection(timestamp))
     lastPlaneFrame = timestamp
@@ -457,7 +463,7 @@ function trainDotCollection(timestamp) {
 
 function animateTrainDots(timestamp) {
   trainAnimationFrame = 0
-  if (!map || mapType.value !== 'train' || !map.getSource('animated-train-dots')) return
+  if (!map || !visibleLayers.value.includes('train') || !map.getSource('animated-train-dots')) return
   if (timestamp - lastTrainFrame >= 40) {
     map.getSource('animated-train-dots').setData(trainDotCollection(timestamp))
     lastTrainFrame = timestamp
@@ -491,7 +497,7 @@ async function loadTravelData() {
   footprintRecords = value(2)
   if (String(props.selectedYear) === 'all') {
     const years = [...new Set([
-      ...footprintRecords.map(item => item.visitTime),
+      ...footprintRecords.map(item => item.visitDate),
       ...flightRecords.map(item => getTicketTime(item, 'flight')),
       ...trainRecords.map(item => getTicketTime(item, 'train'))
     ].map(value => String(value || '').slice(0, 4)).filter(year => /^\d{4}$/.test(year)))]
@@ -503,8 +509,8 @@ async function loadTravelData() {
 
 function getTicketTime(record, kind) {
   const directValue = kind === 'flight'
-    ? record.takeoffTime || record.Time
-    : record.departureDatetime || record.Time
+    ? record.departureTime || record.Time
+    : record.departureTime || record.Time
   if (directValue) return directValue
   const label = kind === 'flight' ? '起飞时间' : '发车时间'
   return record.more?.find(item => item.label === label)?.value || ''
@@ -516,16 +522,16 @@ function filterByYear(records, timeGetter) {
   return records.filter(record => String(timeGetter(record) || '').startsWith(year))
 }
 
-function getCityCode(adcode) {
-  const code = String(adcode || '')
+function getCityCode(regionCode) {
+  const code = String(regionCode || '')
   if (!code) return null
   if (code.length < 6) return code
   return ['11', '12', '31', '50'].includes(code.slice(0, 2)) ? code.slice(0, 2) : code.slice(0, 4)
 }
 
 function getPlaceKey(item) {
-  if (item.spotId != null) return `id:${item.spotId}`
-  return `${item.spotName || ''}:${item.longitude || ''}:${item.latitude || ''}`
+  if (item.footprintId != null) return `id:${item.footprintId}`
+  return `${item.placeName || ''}:${item.longitude || ''}:${item.latitude || ''}`
 }
 
 async function updateTravelDataByYear() {
@@ -533,14 +539,31 @@ async function updateTravelDataByYear() {
   const year = String(props.selectedYear)
   visibleFootprintRecords = year === 'all'
     ? footprintRecords
-    : footprintRecords.filter(item => String(item.visitTime || '').startsWith(year))
+    : footprintRecords.filter(item => String(item.visitDate || '').startsWith(year))
   flightFeatures = lineCollection(filterByYear(flightRecords, item => getTicketTime(item, 'flight')), 'flight')
   trainFeatures = lineCollection(filterByYear(trainRecords, item => getTicketTime(item, 'train')), 'train')
 
-  const cityCodes = [...new Set(visibleFootprintRecords.map(item => getCityCode(item.adcode)).filter(Boolean))]
+  const travelCityCodes = new Set(visibleFootprintRecords
+    .filter(item => item.visitType !== 'transit')
+    .map(item => getCityCode(item.regionCode)).filter(Boolean))
+  const transitCityCodes = new Set(visibleFootprintRecords
+    .filter(item => item.visitType === 'transit')
+    .map(item => getCityCode(item.regionCode)).filter(Boolean))
+  const cityCodes = [...new Set([...travelCityCodes, ...transitCityCodes])]
   let nextRegions = EMPTY_COLLECTION
   try {
     nextRegions = cityCodes.length ? await getRegionBoundaries(cityCodes) : EMPTY_COLLECTION
+    nextRegions = {
+      ...nextRegions,
+      features: (nextRegions.features || []).map(feature => {
+        const code = String(feature.properties?.code || '')
+        const cityCode = getCityCode(code)
+        return {
+          ...feature,
+          properties: { ...feature.properties, visitType: travelCityCodes.has(code) || travelCityCodes.has(cityCode) ? 'travel' : 'transit' }
+        }
+      })
+    }
   } catch {
     nextRegions = EMPTY_COLLECTION
   }
@@ -549,15 +572,16 @@ async function updateTravelDataByYear() {
   exploredRegions = nextRegions
   footprintFeatures = {
     type: 'FeatureCollection',
-    features: visibleFootprintRecords.filter(validCoordinates).map(item => ({
+    features: visibleFootprintRecords.filter(item => item.visitType !== 'transit' && validCoordinates(item)).map(item => ({
       type: 'Feature',
-      properties: { spotId: item.spotId, visitType: item.visitType || 'travel' },
+      properties: { footprintId: item.footprintId, visitType: 'travel' },
       geometry: { type: 'Point', coordinates: [Number(item.longitude), Number(item.latitude)] }
     }))
   }
   emit('footprint-summary', {
-    cities: cityCodes.length,
-    places: new Set(visibleFootprintRecords.map(getPlaceKey)).size
+    cities: travelCityCodes.size,
+    transitCities: [...transitCityCodes].filter(code => !travelCityCodes.has(code)).length,
+    places: new Set(visibleFootprintRecords.filter(item => item.visitType !== 'transit').map(getPlaceKey)).size
   })
   renderFootprintMarkers()
   map?.getSource('footprint-points')?.setData(footprintFeatures)
@@ -591,7 +615,7 @@ onMounted(async () => {
     }
     const footprint = map.queryRenderedFeatures(event.point, { layers: ['footprint-single-points'] })[0]
     if (footprint) {
-      const place = visibleFootprintRecords.find(item => String(item.spotId) === String(footprint.properties.spotId))
+      const place = visibleFootprintRecords.find(item => String(item.footprintId) === String(footprint.properties.footprintId))
       if (place) emit('select-place', place)
       return
     }
@@ -610,7 +634,11 @@ onMounted(async () => {
       return
     }
     const title = feature.properties.title || feature.properties.name || '已探索地区'
-    const detailText = feature.properties.number || feature.properties.detail || ''
+    const detailText = feature.properties.visitType === 'transit'
+      ? '途经城市'
+      : feature.properties.visitType === 'travel'
+        ? '旅行地区'
+        : feature.properties.number || feature.properties.detail || ''
     const detail = detailText ? `<br>${detailText}` : ''
     popup.setLngLat(event.lngLat).setHTML(`<strong>${title}</strong>${detail}`).addTo(map)
   })
@@ -621,7 +649,7 @@ onMounted(async () => {
   map.on('zoom', updateFootprintMarkerVisibility)
 })
 
-watch(mapType, updateMode)
+watch(visibleLayers, updateMode)
 watch(() => props.selectedYear, loadTravelData)
 
 onBeforeUnmount(() => {
@@ -686,15 +714,19 @@ onBeforeUnmount(() => {
   background: #59d8ff
 }
 
+.legend-swatch.transit-region { height: 9px; background: #79c8ff; }
+.legend-swatch.travel-place { width: 9px; height: 9px; border: 2px solid #53e2b4; border-radius: 50%; background: #12372f; }
+.legend-swatch.explored { height: 9px; }
+
 :global(.footprint-photo-marker) {
   position: absolute;
   top: 0;
   left: 0;
-  width: 36px;
-  height: 36px;
+  width: 28px;
+  height: 28px;
   padding: 0;
   overflow: hidden;
-  border: 3px solid #53e2b4;
+  border: 2px solid #53e2b4;
   border-radius: 50%;
   background: #12372f;
   box-shadow: 0 5px 16px rgba(0, 0, 0, .46);
@@ -704,7 +736,6 @@ onBeforeUnmount(() => {
 }
 
 :global(.footprint-photo-marker:hover) { z-index: 2; box-shadow: 0 7px 22px rgba(48, 226, 180, .42); }
-:global(.footprint-photo-marker.is-transit) { border-color: #ffbd59; background: #4a3415; }
 :global(.footprint-photo-marker img) { position: absolute; inset: 0; z-index: 1; width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
 :global(.footprint-photo-marker span) { display: grid; width: 100%; height: 100%; place-items: center; font-size: 15px; font-weight: 700; }
 

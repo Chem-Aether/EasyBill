@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException, Query
 
 from ..utils.models import ValuesRequest
 from ..utils.responses import geojson, payload
-from ..services import regions
+from ..services import admin_boundaries as regions
 
 
 router = APIRouter(prefix="/api/regions", tags=["regions"])
@@ -18,17 +18,6 @@ def boundaries(body: ValuesRequest):
     codes = list(dict.fromkeys(body.codes))[:500]
     features = [regions.boundary_feature(regions.boundary_row(code)) for code in codes]
     return geojson({"type": "FeatureCollection", "features": [feature for feature in features if feature]})
-
-
-@router.post("/by-codes", summary="根据行政区划代码查询行政区信息(可批量)")
-def by_codes(body: ValuesRequest):
-    rows = []
-    for code in list(dict.fromkeys(body.codes))[:5000]:
-        row = regions.region_record(code)
-        if row:
-            row["fullName"] = regions.full_name(code)
-            rows.append(row)
-    return payload(rows)
 
 
 @router.get("/{code}/boundary", summary="根据行政区划代码查询行政区边界")

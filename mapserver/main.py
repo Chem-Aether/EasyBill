@@ -2,7 +2,7 @@ import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.routers import catalog, geocoding, regions, tiles
+from app.routers import catalog, geocoding, railway, regions, tiles
 from app.settings import CORS_HEADERS, CORS_METHODS, CORS_ORIGINS, HOST, PORT
 from app.utils.responses import payload
 
@@ -21,6 +21,7 @@ app.add_middleware(
 app.include_router(geocoding.router)
 app.include_router(regions.router)
 app.include_router(catalog.router)
+app.include_router(railway.router)
 app.include_router(tiles.router)
 
 

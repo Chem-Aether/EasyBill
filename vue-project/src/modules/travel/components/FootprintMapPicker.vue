@@ -28,6 +28,15 @@
         </el-option>
       </el-select>
     </div>
+    <div class="coordinate-search">
+      <el-input v-model="longitudeInput" inputmode="decimal" placeholder="经度 -180 至 180" aria-label="经度" @keyup.enter="locateCoordinates">
+        <template #prepend>经度</template>
+      </el-input>
+      <el-input v-model="latitudeInput" inputmode="decimal" placeholder="纬度 -90 至 90" aria-label="纬度" @keyup.enter="locateCoordinates">
+        <template #prepend>纬度</template>
+      </el-input>
+      <el-button type="primary" @click="locateCoordinates">定位</el-button>
+    </div>
     <div ref="mapContainer" class="picker-map"></div>
     <div class="picker-status">
       <span v-if="longitude != null && latitude != null">
@@ -41,6 +50,7 @@
 
 <script setup>
 import { nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { ElMessage } from 'element-plus'
 import * as maplibregl from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import { forwardGeocode, reverseGeocode } from '@/modules/travel/apis/sysResource.js'
@@ -55,6 +65,8 @@ const mapContainer = ref(null)
 const selectedPoi = ref('')
 const poiOptions = ref([])
 const poiLoading = ref(false)
+const longitudeInput = ref(props.longitude == null ? '' : String(props.longitude))
+const latitudeInput = ref(props.latitude == null ? '' : String(props.latitude))
 let map
 let marker
 let searchRequestId = 0
@@ -94,6 +106,11 @@ function setMarker(longitude, latitude, moveMap = false) {
   if (moveMap) map.flyTo({ center: coordinates, zoom: Math.max(map.getZoom(), 11) })
 }
 
+function setCoordinateInputs(longitude, latitude) {
+  longitudeInput.value = String(longitude)
+  latitudeInput.value = String(latitude)
+}
+
 async function locationAt(longitude, latitude) {
   const response = await reverseGeocode(longitude, latitude)
   const location = response.data
@@ -107,11 +124,32 @@ async function locationAt(longitude, latitude) {
 async function handleMapClick(event) {
   const longitude = Number(event.lngLat.lng.toFixed(7))
   const latitude = Number(event.lngLat.lat.toFixed(7))
+  setCoordinateInputs(longitude, latitude)
   setMarker(longitude, latitude)
   try {
     emit('pick', { longitude, latitude, ...await locationAt(longitude, latitude) })
   } catch {
     emit('pick', { longitude, latitude, adcode: '', districtName: '', fullName: '' })
+  }
+}
+
+async function locateCoordinates() {
+  const longitude = Number(longitudeInput.value)
+  const latitude = Number(latitudeInput.value)
+  if (!longitudeInput.value.trim() || !latitudeInput.value.trim()
+      || !Number.isFinite(longitude) || !Number.isFinite(latitude)
+      || longitude < -180 || longitude > 180 || latitude < -90 || latitude > 90) {
+    ElMessage.warning('请输入有效坐标：经度 -180 至 180，纬度 -90 至 90')
+    return
+  }
+  if (!map) return
+  const point = { longitude: Number(longitude.toFixed(7)), latitude: Number(latitude.toFixed(7)) }
+  setCoordinateInputs(point.longitude, point.latitude)
+  setMarker(point.longitude, point.latitude, true)
+  try {
+    emit('pick', { ...point, ...await locationAt(point.longitude, point.latitude) })
+  } catch {
+    emit('pick', { ...point, adcode: '', districtName: '', fullName: '' })
   }
 }
 
@@ -146,6 +184,7 @@ function selectPoi(id) {
   const poi = poiOptions.value.find(item => item.id === id)
   if (!poi) return
   const [longitude, latitude] = poi.coordinates.map(Number)
+  setCoordinateInputs(Number(longitude.toFixed(7)), Number(latitude.toFixed(7)))
   map.flyTo({ center: [longitude, latitude], zoom: Math.max(map.getZoom(), 13) })
   setMarker(longitude, latitude)
   emit('pick', {
@@ -186,10 +225,13 @@ onMounted(async () => {
 
 watch(() => [props.longitude, props.latitude], ([longitude, latitude]) => {
   if (longitude == null || latitude == null) {
+    longitudeInput.value = ''
+    latitudeInput.value = ''
     marker?.remove()
     marker = null
     return
   }
+  setCoordinateInputs(longitude, latitude)
   setMarker(longitude, latitude)
 })
 
@@ -203,6 +245,7 @@ onBeforeUnmount(() => {
 .picker-shell { border: 1px solid #d7dde5; background: #f6f8fa; }
 .poi-search { padding: 10px; border-bottom: 1px solid #d7dde5; background: #fff; }
 .poi-search :deep(.el-select) { width: 100%; }
+.coordinate-search { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto; gap: 8px; padding: 10px; border-bottom: 1px solid #d7dde5; background: #fff; }
 .poi-option { width: 100%; display: flex; align-items: center; gap: 16px; }
 .poi-main { min-width: 0; display: flex; align-items: baseline; gap: 8px; }
 .poi-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -211,4 +254,5 @@ onBeforeUnmount(() => {
 .picker-map { width: 100%; height: 330px; }
 .picker-status { min-height: 38px; padding: 0 12px; display: flex; align-items: center; justify-content: space-between; color: #52606d; font-size: 13px; font-variant-numeric: tabular-nums; }
 :deep(.maplibregl-ctrl-group) { border-radius: 4px; }
+@media (max-width: 560px) { .coordinate-search { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } .coordinate-search :deep(.el-button) { grid-column: 1 / -1; } }
 </style>

@@ -4,10 +4,6 @@ export const searchAirports = (keyword, limit = 20) => mapRequest.get('/api/airp
   params: { keyword, limit },
 })
 
-export const searchTrainStations = (keyword, limit = 20) => mapRequest.get('/api/stations/search', {
-  params: { keyword, limit },
-})
-
 export const forwardGeocode = (keyword, type = 'all', limit = 20) => mapRequest.get('/api/geocode/forward', {
   params: { q: keyword, type, limit },
 })

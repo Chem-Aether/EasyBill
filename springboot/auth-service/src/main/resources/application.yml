@@ -1,0 +1,24 @@
+server:
+  port: ${AUTH_PORT:8081}
+spring:
+  application:
+    name: auth-service
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: ${AUTH_DB_URL:jdbc:mysql://localhost:3306/eastbill_identity?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai}
+    username: ${AUTH_DB_USERNAME:root}
+    password: ${AUTH_DB_PASSWORD:123456}
+  sql:
+    init:
+      mode: always
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      database: ${REDIS_DATABASE:0}
+jwt:
+  secret: ${JWT_SECRET:easybill_2026_secret_key_abcdefg}
+  expire: ${JWT_EXPIRE:86400}
+springdoc:
+  packages-to-scan: com.user

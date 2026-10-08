@@ -1,0 +1,15 @@
+server:
+  port: ${BILL_PORT:8083}
+spring:
+  application:
+    name: bill-service
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: ${BILL_DB_URL:jdbc:mysql://localhost:3306/eastbill_bill?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai}
+    username: ${BILL_DB_USERNAME:root}
+    password: ${BILL_DB_PASSWORD:123456}
+  sql:
+    init:
+      mode: always
+springdoc:
+  packages-to-scan: com.bill

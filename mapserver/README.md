@@ -1,6 +1,6 @@
 # EastBill 离线地理信息服务
 
-独立的 Python/FastAPI 服务，统一提供矢量瓦片、机场、车站、POI、行政区边界和地理编码。业务前后端只依赖 HTTP 接口，不直接读取地理数据文件。
+独立的 Python/FastAPI 服务，统一提供矢量瓦片、机场、铁路车站、POI、行政区边界和地理编码。业务前后端只依赖 HTTP 接口，不直接读取地理数据文件。
 
 ## 工程结构
 
@@ -12,14 +12,17 @@ mapserver/
 │  ├─ routers/                HTTP 路由
 │  ├─ services/               查询与地理编码逻辑
 │  ├─ tiles/                  PMTiles 选源、读取、overzoom 和缓存
-│  └─ utils/                  数据库、几何算法、模型与响应
+│  └─ utils/                  数据库、GeoPackage、模型与响应
 ├─ config/
 │  └─ application.json        服务、存储、CORS 和地图数据源配置
 ├─ scripts/
-│  ├─ import_osm_poi.py       OSM PBF → POI/FTS/RTree
-│  └─ import_region_boundaries.py  GeoJSON → 行政区/RTree
+│  ├─ import_osm_poi.py       OSM PBF → POI GeoPackage/FTS/RTree
+│  └─ import_admin_boundaries.py   GeoJSON → 行政区 GeoPackage/RTree
 ├─ data/
-│  ├─ geo.sqlite              运行数据库
+│  ├─ airports.gpkg           机场点数据
+│  ├─ poi.gpkg                POI 点数据、FTS/RTree
+│  ├─ china_admin_boundaries.gpkg 行政区目录、边界和空间索引
+│  ├─ china_railway_network.gpkg 铁路车站和线路
 │  ├─ world.pmtiles
 │  ├─ china.pmtiles
 │  └─ source/                 可归档的原始 PBF/GeoJSON
@@ -52,7 +55,9 @@ python -m venv .venv
 $env:MAP_HOST = '127.0.0.1'
 $env:MAP_PORT = '8765'
 $env:MAP_DATA_DIR = 'D:\geo-data'
-$env:MAP_DATABASE = 'D:\geo-data\geo.sqlite'
+$env:MAP_POI = 'D:\geo-data\poi.gpkg'
+$env:MAP_ADMIN_BOUNDARIES = 'D:\geo-data\china_admin_boundaries.gpkg'
+$env:MAP_AIRPORTS = 'D:\geo-data\airports.gpkg'
 $env:MAP_CONFIG = 'D:\geo-config\application.json'
 $env:MAP_TILE_CACHE_SIZE = '512'
 ```
@@ -71,10 +76,10 @@ $env:MAP_TILE_CACHE_SIZE = '512'
 更新行政区边界：
 
 ```powershell
-.\.venv\Scripts\python.exe scripts\import_region_boundaries.py
+.\.venv\Scripts\python.exe scripts\import_admin_boundaries.py
 ```
 
-默认读取 `data/source/boundaries` 下的 `china.json`、`中国_市.json` 和 `中国_县.json`。
+默认读取 `data/source/boundaries` 下的 `中国_省.geojson`、`中国_市.geojson` 和 `中国_县.geojson`，独立生成 `data/china_admin_boundaries.gpkg`。源文件路径属于导入工具配置，不放在服务运行配置 `config/application.json` 中；也可通过 `--province`、`--city`、`--district` 指定新文件。文件集中保存行政区编码、名称、层级、类型、父级、几何和 RTree 空间索引；重导入会保留已有编码对应的类型和父级信息。
 
 更新全国 POI：
 
@@ -82,7 +87,10 @@ $env:MAP_TILE_CACHE_SIZE = '512'
 .\.venv\Scripts\python.exe scripts\import_osm_poi.py
 ```
 
-默认读取 `data/source/osm` 下文件名最大的 `china-*.osm.pbf`。两个导入器都先在临时数据库中构建和校验，成功后才替换 `data/geo.sqlite`。
+默认读取 `data/source/osm` 下文件名最大的 `china-*.osm.pbf`。POI 导入器独立构建并校验临时 GeoPackage（包含 FTS5 全文索引和 RTree 空间索引），再替换 `data/poi.gpkg`；行政区导入器独立构建并校验临时 GeoPackage，再替换 `data/china_admin_boundaries.gpkg`。更新 POI 数据时建议先停止地图服务，完成导入后再启动。
+
+
+机场点位存储在 `data/airports.gpkg` 的 `airports` 点图层（EPSG:4326）中，可直接用 QGIS 编辑；POI 存储在 `data/poi.gpkg` 的 `poi` 点图层（EPSG:4326）中，可在 QGIS 查看与编辑。POI 包内保留 OSM 来源字段、FTS5 全文索引和 GeoPackage RTree 空间索引。空间编辑会通过 GeoPackage 触发器同步空间索引与经纬度字段，属性编辑会维护全文索引。
 
 ## 接口
 
@@ -107,8 +115,7 @@ $env:MAP_TILE_CACHE_SIZE = '512'
 - `GET /api/pois/{id}`
 - `GET /api/airports/search`
 - `POST /api/airports/by-codes`
-- `GET /api/stations/search`
-- `POST /api/stations/by-names`
+- `GET /api/railway/stations/search`
 
 边界接口直接返回标准 GeoJSON；其余接口保持 `{ "msg": "操作成功", "data": ... }` 响应格式。
 

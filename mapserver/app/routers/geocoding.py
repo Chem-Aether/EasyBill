@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException, Query
 
 from ..utils.models import PointsRequest
 from ..utils.responses import payload
-from ..services import catalog, regions
+from ..services import admin_boundaries as regions, catalog
 
 
 router = APIRouter(prefix="/api/geocode", tags=["geocoding"])

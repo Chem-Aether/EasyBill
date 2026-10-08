@@ -1,4 +1,4 @@
-import request from '@/utils/request.js'
+import { travelRequest as request } from '@/utils/request.js'
 
 // 获取机票列表
 export const getFlightList = (params = {}) => {
@@ -17,9 +17,9 @@ export const getFlightList = (params = {}) => {
             arrivalIcao: params.arrivalIcao,
 
             // 时间范围
-            // 后端 DTO: takeoffTimeStart/takeoffTimeEnd
-            takeoffTimeStart: params.takeoffTimeStart ?? params.departureDatetimeStart,
-            takeoffTimeEnd: params.takeoffTimeEnd ?? params.departureDatetimeEnd
+            // 后端按起飞时间范围查询
+            departureTimeStart: params.departureTimeStart,
+            departureTimeEnd: params.departureTimeEnd
         }
     }).then(res => {
     // 永远分页：后端应返回 Result{ data: IPage{ records, total, ... } }
@@ -36,27 +36,28 @@ export const getFlightList = (params = {}) => {
 // 公共字段
 const flightTicketFields = (params) => ({
     flightNo: params.flightNo,
-    company: params.company,
-    aircraftReg: params.aircraftReg,
+    airline: params.airline,
+    aircraftRegistration: params.aircraftRegistration,
     aircraftType: params.aircraftType,
 
     // 表字段：中文名 + ICAO
-    departureAirport: params.departureAirport,
+    departureAirportName: params.departureAirportName,
     departureTerminal: params.departureTerminal,
-    departureIcao: params.departureIcao,
-    takeoffTime: params.takeoffTime,
     boardingMethod: params.boardingMethod,
+    departureIcao: params.departureIcao,
+    departureTime: params.departureTime,
 
-    arrivalAirport: params.arrivalAirport,
+    arrivalAirportName: params.arrivalAirportName,
     arrivalTerminal: params.arrivalTerminal,
+    deboardingMethod: params.deboardingMethod,
     arrivalIcao: params.arrivalIcao,
-    landingTime: params.landingTime,
-    deplaningMethod: params.deplaningMethod,
+    arrivalTime: params.arrivalTime,
 
     // 表字段：经停机场只存中文
-    stopoverAirport: params.stopoverAirport,
-    flightDistanceKm: params.flightDistanceKm,
-    seatNo: params.seatNo
+    stopovers: params.stopovers || [],
+    distanceKm: params.distanceKm,
+    seatNo: params.seatNo,
+    note: params.note
 })
 
 // 新增机票
@@ -87,3 +88,10 @@ export const deleteFlightTicketById = (id) => {
         method: 'DELETE'
     })
 }
+
+
+export const deleteFlightTickets = (ids) => request({
+    url: '/travel/flights/batch',
+    method: 'DELETE',
+    data: ids
+})

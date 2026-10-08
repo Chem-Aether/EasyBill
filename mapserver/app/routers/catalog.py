@@ -1,9 +1,9 @@
 from fastapi import APIRouter, HTTPException, Query
 
 from ..utils.database import all_rows, one
-from ..utils.models import NamesRequest, ValuesRequest
+from ..utils.models import ValuesRequest
 from ..utils.responses import payload
-from ..services import catalog
+from ..services import airports as airport_service, catalog
 
 
 router = APIRouter(prefix="/api", tags=["catalog"])
@@ -11,22 +11,12 @@ router = APIRouter(prefix="/api", tags=["catalog"])
 
 @router.get("/airports/search", summary="搜索机场")
 def airports(keyword: str = "", limit: int = Query(20, ge=1, le=50)):
-    return payload(catalog.search_airports(keyword.strip(), limit))
+    return payload(airport_service.search(keyword.strip(), limit))
 
 
 @router.post("/airports/by-codes", summary="根据 ICAO/IATA 代码查询机场(可批量)")
 def airports_by_codes(body: ValuesRequest):
-    return payload(catalog.by_values("airport", "icao", body.codes, "icao, iata, name, city, attr, longitude, latitude", 1000))
-
-
-@router.get("/stations/search", summary="搜索火车站")
-def stations(keyword: str = "", limit: int = Query(20, ge=1, le=50)):
-    return payload(catalog.search_stations(keyword.strip(), limit))
-
-
-@router.post("/stations/by-names", summary="根据火车站名称查询火车站(可批量)")
-def stations_by_names(body: NamesRequest):
-    return payload(catalog.by_values("train_stations", "name", body.names, "name, code, city, region, province, longitude, latitude", 5000))
+    return payload(airport_service.by_codes(body.codes))
 
 
 @router.get("/pois/search", summary="搜索兴趣点")

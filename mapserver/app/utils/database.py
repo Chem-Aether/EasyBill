@@ -1,7 +1,7 @@
 import sqlite3
 import threading
 
-from ..settings import DATABASE_PATH
+from ..settings import POI_PATH
 
 
 _local = threading.local()
@@ -10,9 +10,9 @@ _local = threading.local()
 def connection():
     database = getattr(_local, "database", None)
     if database is None:
-        if not DATABASE_PATH.is_file():
-            raise FileNotFoundError(f"Geographic database not found: {DATABASE_PATH}")
-        uri = f"file:{DATABASE_PATH.as_posix()}?mode=ro"
+        if not POI_PATH.is_file():
+            raise FileNotFoundError(f"POI GeoPackage not found: {POI_PATH}")
+        uri = f"file:{POI_PATH.as_posix()}?mode=ro"
         database = sqlite3.connect(uri, uri=True)
         database.row_factory = sqlite3.Row
         _local.database = database

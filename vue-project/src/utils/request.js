@@ -8,10 +8,10 @@ const normalizeBaseUrl = (value, name) => {
   return url
 }
 
-export const API_BASE_URL = normalizeBaseUrl(
-  import.meta.env.VITE_API_BASE_URL,
-  'VITE_API_BASE_URL',
-)
+export const AUTH_BASE_URL = normalizeBaseUrl(import.meta.env.VITE_AUTH_BASE_URL, 'VITE_AUTH_BASE_URL')
+export const BILL_BASE_URL = normalizeBaseUrl(import.meta.env.VITE_BILL_BASE_URL, 'VITE_BILL_BASE_URL')
+export const TRAVEL_BASE_URL = normalizeBaseUrl(import.meta.env.VITE_TRAVEL_BASE_URL, 'VITE_TRAVEL_BASE_URL')
+export const DIARY_BASE_URL = normalizeBaseUrl(import.meta.env.VITE_DIARY_BASE_URL, 'VITE_DIARY_BASE_URL')
 
 export const MAP_BASE_URL = normalizeBaseUrl(
   import.meta.env.VITE_MAP_BASE_URL,
@@ -68,7 +68,10 @@ export const createRequest = baseURL => attachInterceptors(axios.create({
   timeout: 10000,
 }))
 
-export const apiRequest = createRequest(API_BASE_URL)
+export const authRequest = createRequest(AUTH_BASE_URL)
+export const billRequest = createRequest(BILL_BASE_URL)
+export const travelRequest = createRequest(TRAVEL_BASE_URL)
+export const diaryRequest = createRequest(DIARY_BASE_URL)
 export const mapRequest = createRequest(MAP_BASE_URL)
 
-export default apiRequest
+export default authRequest

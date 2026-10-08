@@ -11,15 +11,24 @@
     />
     <header class="board-toolbar glass-surface">
       <div class="board-brand"><strong>旅行足迹</strong><span>个人出行地图</span></div>
-      <el-radio-group v-model="activeMode" class="mode-switch" @change="changeMode">
-        <el-radio-button value="foot">足迹</el-radio-button>
-        <el-radio-button value="flight">航线</el-radio-button>
-        <el-radio-button value="train">铁路</el-radio-button>
-      </el-radio-group>
+      <el-checkbox-group v-model="visibleLayers" class="layer-switch" @change="changeLayers">
+        <el-checkbox-button value="foot">足迹</el-checkbox-button>
+        <el-checkbox-button value="flight">航线</el-checkbox-button>
+        <el-checkbox-button value="train">铁路</el-checkbox-button>
+      </el-checkbox-group>
     </header>
+    <button
+      v-if="!drawerOpen && hasRouteLayer"
+      class="drawer-handle glass-surface"
+      type="button"
+      aria-label="展开行程列表"
+      title="展开行程列表"
+      @click="drawerOpen = true"
+    ><span aria-hidden="true">›</span></button>
     <el-button class="admin-entry glass-surface" @click="goToAdmin">管理数据</el-button>
-    <div v-if="activeMode === 'foot'" class="foot-summary glass-surface">
+    <div v-if="visibleLayers.includes('foot')" class="foot-summary glass-surface">
       <div><strong>{{ footprintSummary.cities }}</strong><span>去过城市</span></div>
+      <div><strong>{{ footprintSummary.transitCities }}</strong><span>途经城市</span></div>
       <div><strong>{{ footprintSummary.places }}</strong><span>去过地点</span></div>
     </div>
     <div v-if="timelineYears.length" class="timeline glass-surface">
@@ -72,30 +81,46 @@
 </template>
 
 <script setup>
-import { nextTick, ref } from 'vue'
+import { computed, nextTick, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import Map from './Map.vue'
 import TravelPanel from './TravelPanel.vue'
 import PlaceDetailPanel from './PlaceDetailPanel.vue'
 import { useTravleStore } from '@/modules/travel/stores/TravelStore.js'
+import { storeToRefs } from 'pinia'
 
 const router = useRouter()
 const store = useTravleStore()
-const activeMode = ref(store.mapType || 'foot')
-const drawerOpen = ref(activeMode.value !== 'foot')
+const { visibleLayers } = storeToRefs(store)
+const initialRouteMode = visibleLayers.value.find(layer => ['flight', 'train'].includes(layer))
+const activeMode = ref(['flight', 'train'].includes(store.mapType) && visibleLayers.value.includes(store.mapType)
+  ? store.mapType
+  : initialRouteMode || 'flight')
+const previousLayers = ref([...visibleLayers.value])
+const hasRouteLayer = computed(() => visibleLayers.value.some(layer => layer === 'flight' || layer === 'train'))
+const drawerOpen = ref(false)
 const routeSelection = ref(null)
 const selectedPlace = ref(null)
 const placeDrawerOpen = ref(false)
-const footprintSummary = ref({ cities: 0, places: 0 })
+const footprintSummary = ref({ cities: 0, transitCities: 0, places: 0 })
 const timelineYears = ref([])
 const selectedYear = ref('all')
 const yearTrack = ref(null)
 
-function changeMode(mode) {
-  store.setMapType(mode)
-  store.mapName = mode === 'flight' ? '航空' : mode === 'train' ? '铁路' : '足迹'
+function changeLayers(layers) {
+  store.setVisibleLayers(layers)
+  const addedRoute = layers.find(layer => ['flight', 'train'].includes(layer) && !previousLayers.value.includes(layer))
+  if (addedRoute) {
+    activeMode.value = addedRoute
+    drawerOpen.value = true
+  } else if (!layers.includes(activeMode.value)) {
+    activeMode.value = ['flight', 'train'].find(layer => layers.includes(layer)) || 'flight'
+    if (!hasRouteLayer.value) drawerOpen.value = false
+  }
+  store.setMapType(activeMode.value)
+  store.mapName = activeMode.value === 'flight' ? '航空' : '铁路'
+  previousLayers.value = [...layers]
   routeSelection.value = null
-  drawerOpen.value = mode !== 'foot'
   placeDrawerOpen.value = false
 }
 
@@ -136,6 +161,9 @@ function scrollYearTrack(event) {
 function showRouteDetail(selection) {
   if (!selection?.type || selection.type === 'foot') return
   activeMode.value = selection.type
+  if (!visibleLayers.value.includes(selection.type)) {
+    store.setVisibleLayers([...visibleLayers.value, selection.type])
+  }
   store.setMapType(selection.type)
   store.mapName = selection.type === 'flight' ? '航空' : '铁路'
   routeSelection.value = { ...selection, nonce: Date.now() }
@@ -151,14 +179,20 @@ function goToAdmin() {
 .travel-board { position: fixed; inset: 0; overflow: hidden; background: #07101d; }
 .board-map { position: absolute; inset: 0; }
 .glass-surface { border: 1px solid rgba(157, 222, 231, .2); background: rgba(7, 18, 29, .7); box-shadow: 0 12px 32px rgba(0, 0, 0, .22); backdrop-filter: blur(18px) saturate(125%); }
-.board-toolbar { position: absolute; z-index: 5; top: 18px; left: 50%; display: flex; align-items: center; gap: 28px; min-height: 54px; padding: 7px 9px 7px 18px; transform: translateX(-50%); border-radius: 6px; }
+.board-toolbar { position: absolute; z-index: 5; top: 18px; left: 50%; display: flex; align-items: center; gap: 26px; min-height: 54px; padding: 7px 18px; transform: translateX(-50%); border-radius: 6px; }
 .board-brand { display: flex; flex-direction: column; color: #ecf8fa; }
 .board-brand strong { font-size: 17px; letter-spacing: 0; }
 .board-brand span { margin-top: 2px; color: #8cabb3; font-size: 11px; }
-.mode-switch :deep(.el-radio-button__inner) { min-width: 66px; border-color: rgba(120, 194, 207, .2); background: rgba(14, 36, 50, .68); color: #afc8ce; box-shadow: none; }
-.mode-switch :deep(.el-radio-button__original-radio:checked + .el-radio-button__inner) { border-color: #43c9de; background: #188ca4; color: #fff; box-shadow: -1px 0 0 0 #43c9de; }
+.layer-switch { display: flex; gap: 4px; }
+.layer-switch :deep(.el-checkbox-button__inner) { min-width: 66px; border-color: rgba(120, 194, 207, .2); background: rgba(14, 36, 50, .68); color: #afc8ce; box-shadow: none; }
+.layer-switch :deep(.el-checkbox-button:nth-child(1).is-checked .el-checkbox-button__inner) { border-color: #43d6a0; background: #167c67; color: #fff; box-shadow: none; }
+.layer-switch :deep(.el-checkbox-button:nth-child(2).is-checked .el-checkbox-button__inner) { border-color: #f4bd62; background: #95641b; color: #fff; box-shadow: none; }
+.layer-switch :deep(.el-checkbox-button:nth-child(3).is-checked .el-checkbox-button__inner) { border-color: #43c9de; background: #176d86; color: #fff; box-shadow: none; }
+.drawer-handle { position: absolute; z-index: 5; top: 50%; left: 0; display: grid; width: 30px; height: 62px; padding: 0; transform: translateY(-50%); place-items: center; border-radius: 0 7px 7px 0; color: #d8edf1; cursor: pointer; }
+.drawer-handle span { font-size: 27px; line-height: 1; }
+.drawer-handle:hover { width: 36px; border-color: rgba(67, 201, 222, .55); color: #fff; }
 .admin-entry { position: absolute; z-index: 5; top: 20px; right: 18px; height: 42px; border-radius: 5px; color: #d8edf1; }
-.foot-summary { position: absolute; z-index: 5; bottom: 18px; left: 18px; display: grid; grid-template-columns: repeat(2, minmax(86px, 1fr)); padding: 10px 12px; border-radius: 6px; }
+.foot-summary { position: absolute; z-index: 5; bottom: 18px; left: 18px; display: grid; grid-template-columns: repeat(3, minmax(86px, 1fr)); padding: 10px 12px; border-radius: 6px; }
 .foot-summary > div { min-width: 86px; padding: 3px 12px; border-right: 1px solid rgba(141, 205, 216, .16); }
 .foot-summary > div:last-child { border-right: 0; }
 .foot-summary strong, .foot-summary span { display: block; }
@@ -178,14 +212,16 @@ function goToAdmin() {
 :global(.place-detail-drawer.el-drawer) { top: 90px; right: 18px; bottom: 18px; height: auto; overflow: hidden; border: 1px solid rgba(131, 215, 226, .22); border-radius: 6px; background: rgba(5, 17, 28, .76); box-shadow: -18px 0 48px rgba(0, 0, 0, .3); backdrop-filter: blur(22px) saturate(130%); }
 :global(.place-detail-drawer .el-drawer__body) { padding: 0; overflow: hidden; }
 :global(.travel-drawer-overlay) { background: transparent !important; }
-@media (max-width: 720px) {
-  .board-toolbar { left: 12px; right: 12px; justify-content: space-between; gap: 8px; transform: none; }
-  .board-brand span { display: none; }
-  .admin-entry { top: 82px; right: 12px; }
-  .foot-summary { bottom: 68px; left: 10px; grid-template-columns: repeat(2, 1fr); }
+@media (max-width: 900px) {
+  .board-toolbar { top: 10px; left: 10px; right: 10px; gap: 8px; min-height: 48px; padding: 6px 8px; transform: none; }
+  .board-brand { display: none; }
+  .board-toolbar { justify-content: center; }
+  .layer-switch :deep(.el-checkbox-button__inner) { min-width: 44px; padding: 8px 9px; }
+  .admin-entry { top: 66px; right: 10px; height: 34px; }
+  .foot-summary { bottom: 68px; left: 10px; grid-template-columns: repeat(3, minmax(72px, 1fr)); }
   .foot-summary > div { min-width: 0; padding: 3px 7px; }
   .timeline { right: 10px; bottom: 10px; left: 10px; grid-template-columns: 58px minmax(0, 1fr); width: auto; transform: none; }
-  :global(.travel-data-drawer.el-drawer) { top: 140px; bottom: 10px; margin-left: 10px; }
-  :global(.place-detail-drawer.el-drawer) { top: 140px; right: 10px; bottom: 10px; }
+  :global(.travel-data-drawer.el-drawer) { top: 112px; bottom: 10px; margin-left: 10px; }
+  :global(.place-detail-drawer.el-drawer) { top: 112px; right: 10px; bottom: 10px; }
 }
 </style>

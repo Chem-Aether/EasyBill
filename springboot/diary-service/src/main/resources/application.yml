@@ -1,0 +1,12 @@
+server:
+  port: ${DIARY_PORT:8085}
+spring:
+  application:
+    name: diary-service
+  datasource:
+    driver-class-name: org.postgresql.Driver
+    url: ${DIARY_DB_URL:jdbc:postgresql://localhost:5432/diary_database}
+    username: ${DIARY_DB_USERNAME:postgres}
+    password: ${DIARY_DB_PASSWORD:123456}
+springdoc:
+  packages-to-scan: com.diary
