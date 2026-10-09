@@ -1,2 +1,3 @@
-DROP DATABASE IF EXISTS eastbill_bill;
-CREATE DATABASE eastbill_bill CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+SELECT 'CREATE DATABASE eastbill_bill'
+WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'eastbill_bill')
+\gexec

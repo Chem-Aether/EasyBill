@@ -4,12 +4,13 @@ spring:
   application:
     name: bill-service
   datasource:
-    driver-class-name: com.mysql.cj.jdbc.Driver
-    url: ${BILL_DB_URL:jdbc:mysql://localhost:3306/eastbill_bill?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai}
-    username: ${BILL_DB_USERNAME:root}
+    driver-class-name: org.postgresql.Driver
+    url: ${BILL_DB_URL:jdbc:postgresql://localhost:5432/eastbill_bill}
+    username: ${BILL_DB_USERNAME:postgres}
     password: ${BILL_DB_PASSWORD:123456}
   sql:
     init:
       mode: always
+      schema-locations: classpath:schema.sql
 springdoc:
   packages-to-scan: com.bill

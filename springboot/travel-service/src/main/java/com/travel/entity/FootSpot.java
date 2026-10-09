@@ -21,7 +21,7 @@ public class FootSpot {
     private BigDecimal latitude;
     private String poiReference;
     private String note;
-    private String coverImagePath;
+    private String mediaId;
     @TableField(exist = false)
     private String regionName;
     @TableField(exist = false)

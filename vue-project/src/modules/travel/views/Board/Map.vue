@@ -20,6 +20,7 @@ import * as maplibregl from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import { getFootprints, getTickets } from '@/modules/travel/apis/travel.js'
 import { getRegionBoundaries } from '@/modules/travel/apis/sysResource.js'
+import { mediaUrl } from '@/modules/travel/apis/media.js'
 import { useTravleStore } from '@/modules/travel/stores/TravelStore.js'
 import { MAP_BASE_URL } from '@/utils/request.js'
 
@@ -329,9 +330,9 @@ function renderFootprintMarkers() {
     element.type = 'button'
     element.className = 'footprint-photo-marker is-travel'
     element.title = item.placeName || '足迹地点'
-    if (item.coverImagePath) {
+    if (item.mediaId) {
       const image = document.createElement('img')
-      image.src = item.coverImagePath
+      image.src = mediaUrl(item.mediaId)
       image.alt = ''
       image.loading = 'lazy'
       image.addEventListener('error', () => image.remove(), { once: true })

@@ -125,23 +125,35 @@
             />
           </el-form-item>
         </div>
-                    <el-form-item label="旅行心得">
-              <el-input
-                v-model="form.note"
-                type="textarea"
-                :rows="4"
-                placeholder="记录这次旅行的见闻、感受或特别回忆"
-                maxlength="1000"
-                show-word-limit
-              />
-            </el-form-item>
-            <el-form-item label="缩略图">
-              <el-input v-model="form.coverImagePath" placeholder="图片 URL，可留空" maxlength="500" />
-            </el-form-item>
+        <el-form-item label="旅行心得">
+          <el-input
+            v-model="form.note"
+            type="textarea"
+            :rows="4"
+            placeholder="记录这次旅行的见闻、感受或特别回忆"
+            maxlength="1000"
+            show-word-limit
+          />
+        </el-form-item>
+        <el-form-item label="旅行封面">
+          <div class="cover-editor">
+            <img v-if="coverPreviewUrl" :src="coverPreviewUrl" alt="足迹封面预览" />
+            <el-upload
+              :auto-upload="false"
+              :show-file-list="false"
+              :disabled="uploadingCover"
+              accept=".jpg,.jpeg,.png,.webp,.gif,image/jpeg,image/png,image/webp,image/gif"
+              :on-change="handleCoverChange"
+            >
+              <el-button :loading="uploadingCover">{{ form.mediaId ? '更换封面' : '上传封面' }}</el-button>
+            </el-upload>
+            <el-button v-if="form.mediaId" link type="danger" :disabled="uploadingCover" @click="form.mediaId = ''">移除封面</el-button>
+          </div>
+        </el-form-item>
       </el-form>
       <template #footer>
-        <el-button :disabled="saving" @click="dialogVisible = false">取消</el-button>
-        <el-button type="primary" :loading="saving" @click="save">保存并点亮</el-button>
+        <el-button :disabled="saving || uploadingCover" @click="dialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="saving" :disabled="uploadingCover" @click="save">保存并点亮</el-button>
       </template>
     </el-dialog>
   </div>
@@ -151,6 +163,7 @@
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { addFootprint, deleteFootprint, deleteFootprints, getFootprints, updateFootprint } from '@/modules/travel/apis/travel.js'
+import { mediaUrl, uploadTravelMedia } from '@/modules/travel/apis/media.js'
 import FootprintMapPicker from '@/modules/travel/components/FootprintMapPicker.vue'
 import TravelDataTools from '@/modules/travel/components/TravelDataTools.vue'
 import TravelRecordExportButton from '@/modules/travel/components/TravelRecordExportButton.vue'
@@ -158,6 +171,7 @@ import TravelRecordExportButton from '@/modules/travel/components/TravelRecordEx
 const rows = ref([])
 const loading = ref(false)
 const saving = ref(false)
+const uploadingCover = ref(false)
 const deleting = ref(false)
 const selectedRows = ref([])
 let loadSequence = 0
@@ -179,8 +193,9 @@ const form = reactive({
   longitude: null,
   latitude: null,
   note: '',
-  coverImagePath: ''
+  mediaId: ''
 })
+const coverPreviewUrl = computed(() => mediaUrl(form.mediaId))
 
 const filteredRows = computed(() => {
   const regionKeyword = regionFilter.value.trim().toLowerCase()
@@ -266,7 +281,7 @@ function resetForm() {
     longitude: null,
     latitude: null,
     note: '',
-    coverImagePath: ''
+    mediaId: ''
   })
   selectedRegionName.value = ''
   editSnapshot.value = null
@@ -286,7 +301,7 @@ function openEdit(row) {
     longitude: row.longitude == null ? null : Number(row.longitude),
     latitude: row.latitude == null ? null : Number(row.latitude),
     note: row.note || '',
-    coverImagePath: row.coverImagePath || ''
+    mediaId: row.mediaId || ''
   })
   editSnapshot.value = JSON.stringify({
     placeName: form.placeName.trim(),
@@ -295,7 +310,7 @@ function openEdit(row) {
     longitude: form.longitude,
     latitude: form.latitude,
     note: form.note.trim() || null,
-    coverImagePath: form.coverImagePath.trim() || null
+    mediaId: form.mediaId || null
   })
   selectedRegionName.value = row.regionName || ''
   dialogVisible.value = true
@@ -308,6 +323,20 @@ async function handleMapPick(point) {
     form.placeName = point.suggestedName
   }
   selectedRegionName.value = point.fullName || point.districtName || ''
+}
+
+async function handleCoverChange(uploadFile) {
+  if (!uploadFile.raw || uploadingCover.value) return
+  uploadingCover.value = true
+  try {
+    const result = await uploadTravelMedia(uploadFile.raw)
+    form.mediaId = result.media_id
+    ElMessage.success('封面上传成功')
+  } catch (error) {
+    ElMessage.error(error?.response?.data?.detail || '封面上传失败')
+  } finally {
+    uploadingCover.value = false
+  }
 }
 
 function clearMapPoint() {
@@ -327,7 +356,7 @@ async function save() {
     longitude: form.longitude,
     latitude: form.latitude,
     note: form.note.trim() || null,
-    coverImagePath: form.coverImagePath.trim() || null
+    mediaId: form.mediaId || null
   }
   if (form.footprintId && editSnapshot.value === JSON.stringify(payload)) {
     dialogVisible.value = false
@@ -410,6 +439,8 @@ p { margin: 0; color: #65777c; font-size: 13px; }
 .more-fields :deep(.el-collapse-item__wrap) { border-bottom: 0; }
 .more-fields :deep(.el-form-item) { margin-bottom: 8px; }
 .region-option { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cover-editor { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
+.cover-editor img { width: 120px; height: 76px; object-fit: cover; border: 1px solid #d9e3e4; border-radius: 5px; }
 .pagination-bar { display: flex; justify-content: center; margin-top: 20px; padding-bottom: 12px; }
 @media (max-width: 700px) {
   .page-header { align-items: stretch; flex-direction: column; }

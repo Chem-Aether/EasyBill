@@ -1,131 +1,75 @@
 <template>
-  <div style="padding: 20px; width: 600px;">
-    <!-- 点击空白处的容器：确保点击空白区域能触发失焦 -->
-    <div @click="handleBlankClick" style="min-height: 400px;">
-      <el-table
-          :data="tableData"
-          border
-          row-key="name"
-          style="width: 100%; margin-bottom: 20px;"
-      >
-        <el-table-column
-            prop="name"
-            label="收支类型"
-            width="150"
-        />
-        <el-table-column
-            label="金额（双击可编辑）"
-            width="200"
-        >
-          <template #default="scope">
-            <div
-                @dblclick.stop="enterEdit(scope.row)"
-            style="cursor: pointer; padding: 2px;"
-            >
-            <!-- 展示模式 -->
-            <span v-if="!scope.row.isEditing">
-                {{ formatThousands(scope.row.value) }}
-              </span>
-            <!-- 编辑模式：el-input -->
-            <el-input
-                v-else
-                :ref="`editInput-${scope.row.name}`"
-                :value="formatThousands(scope.row.value)"
-                @input="handleInput(scope.row, $event)"
-                @blur="exitEdit(scope.row)"
-                @keyup.enter="exitEdit(scope.row)"
-                @click.stop
-            size="small"
-            style="width: 120px;"
-            />
-    </div>
-</template>
-</el-table-column>
-<el-table-column label="操作" width="100">
-<template #default="scope">
-  <el-button
-      size="small"
-      type="text"
-      @click="resetValue(scope.row)"
-  >
-    重置
-  </el-button>
-</template>
-</el-table-column>
-</el-table>
-
-<!-- 测试空白处：点击这里也能退出编辑 -->
-<div style="height: 200px; background: #f5f5f5; margin-top: 20px;">
-点击这个空白区域，编辑中的单元格会退出编辑
-</div>
-</div>
-</div>
+  <main class="account-page">
+    <header class="page-header"><div><h1>账户</h1><p>管理自有资金账户与当前余额</p></div><el-button type="primary" @click="openCreate">新增账户</el-button></header>
+    <section class="account-grid" v-loading="loading">
+      <article v-for="account in accounts" :key="account.id" class="account-card" role="link" tabindex="0" @click="openDetail(account)" @keydown.enter="openDetail(account)">
+        <div class="account-head"><div><h2>{{ account.name }}</h2><span>{{ account.code ? `尾号 ${account.code}` : '未设置尾号' }}</span></div><el-dropdown trigger="click" @click.stop><el-button text>更多</el-button><template #dropdown><el-dropdown-menu><el-dropdown-item @click="openEdit(account)">编辑账户</el-dropdown-item><el-dropdown-item divided @click="remove(account)">删除账户</el-dropdown-item></el-dropdown-menu></template></el-dropdown></div>
+        <div class="balance-label">当前余额</div><strong class="balance">¥ {{ money(account.balance) }}</strong>
+        <div class="account-footer">查看账户流水 <el-icon><ArrowRight /></el-icon></div>
+      </article>
+      <el-empty v-if="!loading && !accounts.length" description="还没有账户" />
+    </section>
+    <el-dialog v-model="dialogVisible" :title="editingId ? '编辑账户' : '新增账户'" width="min(460px, 94vw)" destroy-on-close>
+      <el-form label-width="100px">
+        <el-form-item label="账户名称" required><el-input v-model="form.name" maxlength="100" placeholder="如：现金、银行卡、电子钱包" /></el-form-item>
+        <el-form-item label="账户尾号"><el-input v-model="form.code" maxlength="40" placeholder="可选" /></el-form-item>
+        <el-form-item label="期初余额"><el-input-number v-model="form.openingBalance" :precision="2" :step="100" controls-position="right" style="width:100%" /></el-form-item>
+      </el-form>
+      <template #footer><el-button @click="dialogVisible=false">取消</el-button><el-button type="primary" :loading="saving" @click="save">保存</el-button></template>
+    </el-dialog>
+  </main>
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue';
-import { ElMessage } from 'element-plus';
+import { onMounted, reactive, ref } from 'vue'
+import { useRouter } from 'vue-router'
+import { ArrowRight } from '@element-plus/icons-vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { createAccount, deleteAccount, getAccounts, updateAccount } from '@/modules/Bill/apis/bill.js'
 
-// 表格数据（含编辑状态、原始值）
-const tableData = reactive([
-  { name: '收入', value: 1048, isEditing: false, originValue: 1048 },
-  { name: '支出', value: 2000, isEditing: false, originValue: 2000 },
-  { name: '互转', value: 0, isEditing: false, originValue: 0 }
-]);
+const accounts = ref([])
+const router = useRouter()
+const loading = ref(false)
+const saving = ref(false)
+const dialogVisible = ref(false)
+const editingId = ref(null)
+const form = reactive({ name: '', code: '', openingBalance: 0 })
+const money = value => Number(value || 0).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+function openDetail(account) { router.push(`/bill/account/${account.id}`) }
 
-// 千分位格式化
-const formatThousands = (num) => {
-  if (!num || isNaN(Number(num))) return "0";
-  const [integerPart, decimalPart] = Number(num).toString().split(".");
-  const formattedInteger = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-  return decimalPart ? `${formattedInteger}.${decimalPart}` : formattedInteger;
-};
-
-// 解析千分位为数字
-const parseThousands = (str) => {
-  if (!str) return 0;
-  return Number(str.replace(/,/g, ""));
-};
-
-// 双击进入编辑
-const enterEdit = (row) => {
-  // 关闭所有行的编辑状态
-  tableData.forEach(item => item.isEditing = false);
-  row.isEditing = true;
-
-  // 延迟聚焦输入框
-  setTimeout(() => {
-    const inputRef = `editInput-${row.name}`;
-    const input = ref(inputRef).value;
-    if (input) {
-      input.focus();
-      input.select();
-    }
-  }, 0);
-};
-
-// 实时输入处理
-const handleInput = (row, val) => {
-  row.value = parseThousands(val);
-};
-
-// 退出编辑（失焦/回车）
-const exitEdit = (row) => {
-  if (isNaN(row.value)) {
-    row.value = row.originValue;
-    ElMessage.warning('输入无效，已重置为原始值');
-  }
-  row.isEditing = false;
-};
-
-// 重置值
-const resetValue = (row) => {
-  row.value = row.originValue;
-  row.isEditing = false;
-};
-
-// 点击空白处：强制关闭所有编辑状态（兜底逻辑）
-const handleBlankClick = () => {
-  tableData.forEach(item => item.isEditing = false);
-};
+async function load() {
+  loading.value = true
+  try { accounts.value = await getAccounts() }
+  catch (error) { ElMessage.error(error?.response?.data?.msg || '账户加载失败') }
+  finally { loading.value = false }
+}
+function openCreate() { editingId.value = null; Object.assign(form, { name: '', code: '', openingBalance: 0 }); dialogVisible.value = true }
+function openEdit(account) { editingId.value = account.id; Object.assign(form, { name: account.name, code: account.code || '', openingBalance: Number(account.openingBalance || 0) }); dialogVisible.value = true }
+async function save() {
+  if (!form.name.trim()) return ElMessage.warning('请输入账户名称')
+  saving.value = true
+  try {
+    const payload = { ...form, name: form.name.trim(), code: form.code.trim() }
+    if (editingId.value) await updateAccount(editingId.value, payload)
+    else await createAccount(payload)
+    dialogVisible.value = false
+    ElMessage.success('账户已保存')
+    await load()
+  } catch (error) { ElMessage.error(error?.response?.data?.msg || '账户保存失败') }
+  finally { saving.value = false }
+}
+async function remove(account) {
+  try {
+    await ElMessageBox.confirm(`确定删除“${account.name}”吗？已被账单使用的账户不能删除。`, '删除账户', { type: 'warning' })
+    await deleteAccount(account.id)
+    ElMessage.success('账户已删除')
+    await load()
+  } catch (error) { if (error !== 'cancel' && error !== 'close') ElMessage.error(error?.response?.data?.msg || '账户删除失败') }
+}
+onMounted(load)
 </script>
+
+<style scoped>
+.account-page { display:flex; flex-direction:column; gap:18px; color:#293b49; }.page-header { display:flex; justify-content:space-between; align-items:center; }.page-header h1 { margin:0; font-size:24px; }.page-header p { margin:6px 0 0; color:#7c8b95; font-size:13px; }
+.account-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(250px,1fr)); gap:14px; align-content:start; }.account-card { position:relative; overflow:hidden; padding:18px; background:#fff; border:1px solid #e4e9ee; border-radius:9px; box-shadow:0 2px 8px rgba(38,55,70,.025); cursor:pointer; transition:transform .16s ease,box-shadow .16s ease; }.account-card:hover { transform:translateY(-2px); box-shadow:0 7px 18px rgba(38,55,70,.08); }.account-card:focus-visible { outline:2px solid #258b88; outline-offset:2px; }.account-card::before { position:absolute; inset:0 0 auto; height:3px; content:''; background:#4c83d4; }.account-card:nth-child(4n + 2)::before { background:#59aa8b; }.account-card:nth-child(4n + 3)::before { background:#e6b44f; }.account-card:nth-child(4n + 4)::before { background:#8a79c7; }.account-head { display:flex; justify-content:space-between; align-items:flex-start; }.account-head h2 { margin:0 0 6px; font-size:16px; }.account-head span,.balance-label { color:#7c8b95; font-size:12px; }.balance-label { margin-top:24px; }.balance { display:block; margin-top:6px; color:#334957; font-size:24px; font-variant-numeric:tabular-nums; }.account-footer { display:flex; align-items:center; gap:4px; margin-top:16px; color:#41819c; font-size:12px; }
+</style>

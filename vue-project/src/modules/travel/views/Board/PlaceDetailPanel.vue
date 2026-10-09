@@ -5,9 +5,9 @@
       <el-button circle text aria-label="关闭地点详情" @click="$emit('close')">×</el-button>
     </header>
     <div class="place-scroll">
-      <div class="place-cover" :class="{ empty: !place.coverImagePath }">
-        <img v-if="place.coverImagePath" :src="place.coverImagePath" :alt="place.placeName" @error="imageFailed = true" v-show="!imageFailed" />
-        <span v-if="!place.coverImagePath || imageFailed">{{ (place.placeName || '地').slice(0, 1) }}</span>
+      <div class="place-cover" :class="{ empty: !coverUrl }">
+        <img v-if="coverUrl" :src="coverUrl" :alt="place.placeName" @error="imageFailed = true" v-show="!imageFailed" />
+        <span v-if="!coverUrl || imageFailed">{{ (place.placeName || '地').slice(0, 1) }}</span>
       </div>
       <div class="place-title">
         <div><h3>{{ place.placeName || '未命名地点' }}</h3><p>{{ place.regionName || '地区未知' }}</p></div>
@@ -30,10 +30,12 @@
 
 <script setup>
 import { computed, ref, watch } from 'vue'
+import { mediaUrl } from '@/modules/travel/apis/media.js'
 
 const props = defineProps({ place: { type: Object, default: null } })
 defineEmits(['close'])
 const imageFailed = ref(false)
+const coverUrl = computed(() => mediaUrl(props.place?.mediaId))
 const coordinateText = computed(() => {
   if (props.place?.longitude == null || props.place?.longitude === '' || props.place?.latitude == null || props.place?.latitude === '') {
     return '未定位（已计入统计）'

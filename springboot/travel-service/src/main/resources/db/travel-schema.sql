@@ -51,10 +51,13 @@ ALTER TABLE train_waypoint DROP COLUMN IF EXISTS station_code;
 CREATE TABLE IF NOT EXISTS footprint (
     footprint_id BIGSERIAL PRIMARY KEY, user_id BIGINT NOT NULL DEFAULT 1,
     place_name VARCHAR(200) NOT NULL, visit_type VARCHAR(20) NOT NULL DEFAULT 'travel', visit_date DATE,
-    location geometry(Point,4326), poi_reference VARCHAR(100), note TEXT, cover_image_path VARCHAR(500),
+    location geometry(Point,4326), poi_reference VARCHAR(100), note TEXT, media_id VARCHAR(32),
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT chk_footprint_type CHECK (visit_type IN ('travel','transit'))
 );
+ALTER TABLE footprint DROP COLUMN IF EXISTS cover_image_path;
+ALTER TABLE footprint DROP COLUMN IF EXISTS cover_media_id;
+ALTER TABLE footprint ADD COLUMN IF NOT EXISTS media_id VARCHAR(32);
 CREATE INDEX IF NOT EXISTS idx_footprint_user_date ON footprint (user_id, visit_date DESC);
 CREATE INDEX IF NOT EXISTS idx_footprint_location ON footprint USING GIST (location);
 

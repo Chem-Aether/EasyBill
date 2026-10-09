@@ -1,12 +1,9 @@
 package com.sysconfig;
 
-import lombok.Data;
-
 /**
  * 统一返回结果（标准RESTful风格）
  * 状态码走 HTTP 响应码，此类不再存放 code
  */
-@Data
 public class Result {
 
     // 提示信息
@@ -17,6 +14,11 @@ public class Result {
 
     // 私有化构造
     private Result() {}
+
+    public String getMsg() { return msg; }
+    public void setMsg(String msg) { this.msg = msg; }
+    public Object getData() { return data; }
+    public void setData(Object data) { this.data = data; }
 
     // ===================== 成功返回 =====================
     public static Result success() {

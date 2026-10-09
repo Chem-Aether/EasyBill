@@ -42,7 +42,7 @@ public class TravelExportService {
             } else {
                 List<List<?>> rows = template ? List.of() : footprints.selectRecords(null).stream()
                         .filter(item -> id == null || id.equals(item.getFootprintId())).map(this::footprintRow).toList();
-                writeSheet(workbook, "足迹", List.of("记录ID", "地点名称", "记录性质", "到访日期", "经度", "纬度", "POI引用", "旅行心得", "缩略图URL"), rows, headerStyle);
+                writeSheet(workbook, "足迹", List.of("记录ID", "地点名称", "记录性质", "到访日期", "经度", "纬度", "POI引用", "旅行心得", "媒体ID"), rows, headerStyle);
             }
             workbook.write(output);
             return output.toByteArray();
@@ -58,7 +58,7 @@ public class TravelExportService {
 
     private List<?> footprintRow(FootSpot row) {
         return Arrays.asList(row.getFootprintId(), row.getPlaceName(), row.getVisitType(), row.getVisitDate(), row.getLongitude(),
-                row.getLatitude(), row.getPoiReference(), row.getNote(), row.getCoverImagePath());
+                row.getLatitude(), row.getPoiReference(), row.getNote(), row.getMediaId());
     }
 
     private void writeSheet(Workbook workbook, String name, List<String> columns, List<? extends List<?>> rows, CellStyle style) {
