@@ -54,7 +54,6 @@ public class FlightRecordService {
         } catch (JsonProcessingException e) { throw new IllegalStateException("经停机场数据损坏", e); }
     }
     private void prepare(FlightRecord record) {
-        if (record.getUserId() == null) record.setUserId(1L);
         if (record.getStopovers() == null) record.setStopovers(List.of());
         try { record.setStopoversJson(objectMapper.writeValueAsString(record.getStopovers())); }
         catch (JsonProcessingException e) { throw new IllegalArgumentException("经停机场格式无效", e); }

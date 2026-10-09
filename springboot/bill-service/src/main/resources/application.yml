@@ -1,5 +1,7 @@
 server:
   port: ${BILL_PORT:8083}
+jwt:
+  secret: ${JWT_SECRET:eastbill-local-dev-secret-change-before-deploy}
 spring:
   application:
     name: bill-service

@@ -35,7 +35,7 @@ public class FootSpotService {
     }
 
     public FootSpot add(FootSpot spot) {
-        validate(spot); spot.setFootprintId(null); if (spot.getUserId() == null) spot.setUserId(1L);
+        validate(spot); spot.setFootprintId(null);
         mapper.insert(spot); mapper.updateLocation(spot.getFootprintId(), spot.getLongitude(), spot.getLatitude());
         return mapper.selectRecordById(spot.getFootprintId());
     }

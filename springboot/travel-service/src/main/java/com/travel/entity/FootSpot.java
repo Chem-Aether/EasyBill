@@ -11,7 +11,6 @@ import java.time.LocalDate;
 public class FootSpot {
     @TableId(value = "footprint_id", type = IdType.AUTO)
     private Long footprintId;
-    private Long userId;
     private String placeName;
     private String visitType;
     private LocalDate visitDate;

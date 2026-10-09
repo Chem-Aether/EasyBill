@@ -40,9 +40,11 @@ const attachInterceptors = (service) => {
 
       switch (response.status) {
         case 401:
-          ElMessage.error('登录已过期，请重新登录')
-          localStorage.removeItem('token')
-          router.push('/login')
+          if (!String(response.config?.url || '').includes('/user/login')) {
+            ElMessage.error('登录已过期，请重新登录')
+            localStorage.removeItem('token')
+            router.push('/login')
+          }
           break
         case 403:
           ElMessage.error('无权限访问')

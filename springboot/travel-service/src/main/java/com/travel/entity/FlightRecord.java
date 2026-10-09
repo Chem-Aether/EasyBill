@@ -16,7 +16,6 @@ import java.util.Map;
 public class FlightRecord {
     @TableId(value = "flight_id", type = IdType.AUTO)
     private Long flightId;
-    private Long userId;
     private String flightNo;
     private String airline;
     private String aircraftType;

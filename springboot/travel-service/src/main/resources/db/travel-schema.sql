@@ -1,7 +1,7 @@
 CREATE EXTENSION IF NOT EXISTS postgis;
 
 CREATE TABLE IF NOT EXISTS flight_record (
-    flight_id BIGSERIAL PRIMARY KEY, user_id BIGINT NOT NULL DEFAULT 1,
+    flight_id BIGSERIAL PRIMARY KEY,
     flight_no VARCHAR(20) NOT NULL, airline VARCHAR(100), aircraft_type VARCHAR(50), aircraft_registration VARCHAR(30),
     departure_icao VARCHAR(10) NOT NULL, departure_airport_name VARCHAR(150), departure_terminal VARCHAR(30), boarding_method VARCHAR(30), departure_time TIMESTAMP NOT NULL,
     arrival_icao VARCHAR(10) NOT NULL, arrival_airport_name VARCHAR(150), arrival_terminal VARCHAR(30), deboarding_method VARCHAR(30), arrival_time TIMESTAMP,
@@ -11,11 +11,12 @@ CREATE TABLE IF NOT EXISTS flight_record (
 );
 ALTER TABLE flight_record ADD COLUMN IF NOT EXISTS boarding_method VARCHAR(30);
 ALTER TABLE flight_record ADD COLUMN IF NOT EXISTS deboarding_method VARCHAR(30);
-CREATE INDEX IF NOT EXISTS idx_flight_user_time ON flight_record (user_id, departure_time DESC);
+DROP INDEX IF EXISTS idx_flight_user_time;
+ALTER TABLE flight_record DROP COLUMN IF EXISTS user_id;
 CREATE INDEX IF NOT EXISTS idx_flight_route ON flight_record (departure_icao, arrival_icao);
 
 CREATE TABLE IF NOT EXISTS train_record (
-    train_id BIGSERIAL PRIMARY KEY, user_id BIGINT NOT NULL DEFAULT 1, train_no VARCHAR(30) NOT NULL,
+    train_id BIGSERIAL PRIMARY KEY, train_no VARCHAR(30) NOT NULL,
     train_type VARCHAR(30), train_model VARCHAR(50),
     start_station_name VARCHAR(100) NOT NULL, departure_time TIMESTAMP NOT NULL,
     end_station_name VARCHAR(100) NOT NULL, arrival_time TIMESTAMP,
@@ -27,7 +28,8 @@ CREATE TABLE IF NOT EXISTS train_record (
     CONSTRAINT chk_train_time CHECK (arrival_time IS NULL OR arrival_time >= departure_time)
 );
 
-CREATE INDEX IF NOT EXISTS idx_train_user_time ON train_record (user_id, departure_time DESC);
+DROP INDEX IF EXISTS idx_train_user_time;
+ALTER TABLE train_record DROP COLUMN IF EXISTS user_id;
 CREATE INDEX IF NOT EXISTS idx_train_number ON train_record (train_no);
 CREATE INDEX IF NOT EXISTS idx_train_route_geometry ON train_record USING GIST (route_geometry);
 ALTER TABLE train_record DROP COLUMN IF EXISTS start_station_code;
@@ -49,7 +51,7 @@ CREATE INDEX IF NOT EXISTS idx_train_waypoint_location ON train_waypoint USING G
 ALTER TABLE train_waypoint DROP COLUMN IF EXISTS station_code;
 
 CREATE TABLE IF NOT EXISTS footprint (
-    footprint_id BIGSERIAL PRIMARY KEY, user_id BIGINT NOT NULL DEFAULT 1,
+    footprint_id BIGSERIAL PRIMARY KEY,
     place_name VARCHAR(200) NOT NULL, visit_type VARCHAR(20) NOT NULL DEFAULT 'travel', visit_date DATE,
     location geometry(Point,4326), poi_reference VARCHAR(100), note TEXT, media_id VARCHAR(32),
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -58,7 +60,8 @@ CREATE TABLE IF NOT EXISTS footprint (
 ALTER TABLE footprint DROP COLUMN IF EXISTS cover_image_path;
 ALTER TABLE footprint DROP COLUMN IF EXISTS cover_media_id;
 ALTER TABLE footprint ADD COLUMN IF NOT EXISTS media_id VARCHAR(32);
-CREATE INDEX IF NOT EXISTS idx_footprint_user_date ON footprint (user_id, visit_date DESC);
+DROP INDEX IF EXISTS idx_footprint_user_date;
+ALTER TABLE footprint DROP COLUMN IF EXISTS user_id;
 CREATE INDEX IF NOT EXISTS idx_footprint_location ON footprint USING GIST (location);
 
 CREATE OR REPLACE FUNCTION set_updated_at() RETURNS trigger

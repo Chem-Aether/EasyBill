@@ -1,6 +1,5 @@
 package com.user.controller;
 
-import com.sysconfig.Result;
 import com.user.service.CaptchaService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -35,21 +34,4 @@ public class CaptchaController {
         );
     }
 
-    @GetMapping("/validate")
-    @Operation(summary = "校验图形验证码")
-    public ResponseEntity<Result> validateCaptcha(
-            @RequestParam String userCaptcha,
-            @RequestParam String captchaKey
-    ) {
-        boolean isValid = captchaService.validateCaptcha(userCaptcha, captchaKey);
-
-        if (isValid) {
-            return ResponseEntity.ok(Result.success("验证码正确"));
-        } else {
-            return new ResponseEntity<>(
-                    Result.error("验证码错误或已过期"),
-                    HttpStatus.BAD_REQUEST
-            );
-        }
-    }
 }

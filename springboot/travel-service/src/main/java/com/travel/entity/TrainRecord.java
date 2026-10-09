@@ -11,7 +11,6 @@ import java.util.List;
 public class TrainRecord {
     @TableId(value = "train_id", type = IdType.AUTO)
     private Long trainId;
-    private Long userId;
     private String trainNo;
     private String trainType;
     private String trainModel;

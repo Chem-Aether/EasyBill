@@ -97,7 +97,6 @@ public class TrainTicketService {
     }
 
     private void prepare(TrainRecord record) {
-        if (record.getUserId() == null) record.setUserId(1L);
         if (record.getWaypoints() == null) record.setWaypoints(java.util.List.of());
         for (int i = 0; i < record.getWaypoints().size(); i++) record.getWaypoints().get(i).setSequence(i + 1);
         record.setRouteGeoJson(normalizeRouteGeoJson(record.getRouteGeoJson()));

@@ -10,13 +10,6 @@ export const captcha = () => {
     });
 };
 
-export const validate = (userCaptcha, captchaKey) => {
-    return request({
-        url: '/captcha/validate?userCaptcha=' + userCaptcha + '&captchaKey='+ captchaKey ,
-        method: 'get',
-    });
-}
-
 // 登录接口
 export const login = (data) => {
     return request({
@@ -30,14 +23,6 @@ export const login = (data) => {
 export const register = (data) => {
     return request({
         url: '/user/register',
-        method: 'post',
-        data,
-    });
-};
-
-export const forgotPassword = (data) => {
-    return request({
-        url: '/user/forgot-password',
         method: 'post',
         data,
     });

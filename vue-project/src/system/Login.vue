@@ -42,11 +42,8 @@
           </el-form-item>
         </el-form>
         <div class="login-links">
-          <el-link type="danger" :underline="false" @click="handleForgotPassword">
-            忘记密码？
-          </el-link>
           <el-link type="danger" :underline="false" @click="handleRegister">
-            注册
+            首次设置账号
           </el-link>
         </div>
       </div>
@@ -59,7 +56,7 @@
   import { useRouter } from 'vue-router'; // 引入 useRouter
 
   // API接口
-  import { captcha, validate, login } from '@/apis/auth.js';
+  import { captcha, login } from '@/apis/auth.js';
 
   onMounted(() => {
       loadCaptcha();
@@ -87,7 +84,6 @@
       const imageUrl = URL.createObjectURL(new Blob([response.data]));
       captchaImage.value = imageUrl; // 更新验证码图片
       captchaKey.value = response.headers['captcha-key']
-      console.log(captchaKey.value)
     } catch (error) {
       console.error('加载验证码失败', error);
     }
@@ -113,22 +109,11 @@
     }
 
 
-    try {
-      // 这里如果验证码错误，会直接抛出异常进入 catch
-      await validate(captcha, captchaKey.value);
-      // 能走到这里 = 验证码正确
-    } catch (error) {
-      // 后端返回 400 会进入这里
-      ElMessage.error(error.response?.data?.msg || '验证码错误！');
-      loadCaptcha();
-      loginForm.value.captcha = '';
-      return;
-    }
-
-
     const loginData = {
       account: username,
       password: password,
+      captchaCode: captcha,
+      captchaKey: captchaKey.value,
     };
 
     try {
@@ -136,6 +121,7 @@
       ElMessage.success(res.data.msg || '登录成功');
       const token = res.headers.token;
       localStorage.setItem('token', token);
+      localStorage.setItem('username', res.data.data?.userName || username);
       router.push('/home');
 
     } catch (error) {
@@ -143,11 +129,6 @@
       loadCaptcha();
       loginForm.value.captcha = '';
     }
-  };
-  
-  // 忘记密码
-  const handleForgotPassword = () => {
-    router.push('/forgot-password');
   };
   
   // 注册

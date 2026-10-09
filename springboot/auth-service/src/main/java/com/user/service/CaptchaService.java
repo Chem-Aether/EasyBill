@@ -2,10 +2,10 @@ package com.user.service;
 
 import com.user.utils.CaptchaUtil;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.UUID;
-import java.util.concurrent.TimeUnit;
 
 @Service
 @RequiredArgsConstructor
@@ -14,19 +14,18 @@ public class CaptchaService {
     // 常量提取
     private static final long CAPTCHA_EXPIRE_MINUTES = 5;
 
-    // 构造器注入
-    private final StringRedisTemplate redisTemplate;
+    private final ConcurrentMap<String, CaptchaEntry> captchas = new ConcurrentHashMap<>();
 
     /**
-     * 生成验证码，存入 Redis，返回验证码图片 + key
+     * 生成验证码，短时保存在当前服务进程内存中
      */
     public CaptchaWithKey generateCaptcha() {
         CaptchaUtil.Captcha captcha = CaptchaUtil.generateCaptcha();
         String captchaKey = UUID.randomUUID().toString();
 
-        // 存入 Redis 5分钟过期
-        redisTemplate.opsForValue()
-                .set(captchaKey, captcha.getText(), CAPTCHA_EXPIRE_MINUTES, TimeUnit.MINUTES);
+        long expiresAt = System.currentTimeMillis() + CAPTCHA_EXPIRE_MINUTES * 60_000;
+        captchas.entrySet().removeIf(entry -> entry.getValue().expiresAt() <= System.currentTimeMillis());
+        captchas.put(captchaKey, new CaptchaEntry(captcha.getText(), expiresAt));
 
         return new CaptchaWithKey(captcha, captchaKey);
     }
@@ -39,18 +38,9 @@ public class CaptchaService {
             return false;
         }
 
-        String correctCode = redisTemplate.opsForValue().get(captchaKey);
-        if (correctCode == null) {
-            return false;
-        }
-
-        // 验证成功 → 删除验证码，防止重复使用
-        boolean isValid = correctCode.equalsIgnoreCase(userInputCode);
-        if (isValid) {
-            redisTemplate.delete(captchaKey);
-        }
-
-        return isValid;
+        CaptchaEntry entry = captchas.remove(captchaKey);
+        return entry != null && entry.expiresAt() > System.currentTimeMillis()
+                && entry.code().equalsIgnoreCase(userInputCode.trim());
     }
 
     /**
@@ -62,4 +52,6 @@ public class CaptchaService {
         private CaptchaUtil.Captcha captcha;
         private String captchaKey;
     }
+
+    private record CaptchaEntry(String code, long expiresAt) {}
 }

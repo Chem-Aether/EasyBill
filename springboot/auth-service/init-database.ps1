@@ -1,13 +1,16 @@
 param(
-  [string]$MySql = 'C:\Database\MySQL\MySQL Server 9.5\bin\mysql.exe',
-  [string]$User = 'root',
+  [string]$Psql = 'C:\Database\PostgreSQL\17\bin\psql.exe',
+  [string]$User = 'postgres',
   [string]$Password = '123456'
 )
 $ErrorActionPreference = 'Stop'
-Get-Content -Raw "$PSScriptRoot\database\init.sql" |
-  & $MySql "-u$User" "-p$Password" --default-character-set=utf8mb4
-if ($LASTEXITCODE -ne 0) { throw 'Failed to initialize eastbill_identity' }
-Get-Content -Raw "$PSScriptRoot\src\main\resources\schema.sql" |
-  & $MySql "-u$User" "-p$Password" --default-character-set=utf8mb4 eastbill_identity
-if ($LASTEXITCODE -ne 0) { throw 'Failed to create auth schema' }
+$env:PGPASSWORD = $Password
+try {
+  & $Psql -U $User -d postgres -v ON_ERROR_STOP=1 -f "$PSScriptRoot\database\init.sql"
+  if ($LASTEXITCODE -ne 0) { throw 'Failed to create eastbill_identity' }
+  & $Psql -U $User -d eastbill_identity -v ON_ERROR_STOP=1 -f "$PSScriptRoot\src\main\resources\schema.sql"
+  if ($LASTEXITCODE -ne 0) { throw 'Failed to create auth schema' }
+} finally {
+  Remove-Item Env:PGPASSWORD -ErrorAction SilentlyContinue
+}
 Write-Host 'eastbill_identity initialized and ready for auth-service.'

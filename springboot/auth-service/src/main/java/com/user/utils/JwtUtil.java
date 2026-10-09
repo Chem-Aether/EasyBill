@@ -16,7 +16,7 @@ public class JwtUtil {
     private JwtConfig jwtconfig;
 
     // 生成 token
-    public String createToken(Integer userId, String account) {
+    public String createToken(Long userId, String account) {
         long expireTime = jwtconfig.getExpire() * 1000;
 
         return JWT.create()
@@ -33,8 +33,8 @@ public class JwtUtil {
     }
 
     // 从token获取用户ID
-    public Integer getUserId(String token) {
-        return verifyToken(token).getClaim("userId").asInt();
+    public Long getUserId(String token) {
+        return verifyToken(token).getClaim("userId").asLong();
     }
 
     // 获取账号

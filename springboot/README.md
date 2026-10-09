@@ -5,8 +5,8 @@ port, datasource and deployment lifecycle.
 
 | Module | Port | Database | Responsibility |
 | --- | ---: | --- | --- |
-| `auth-service` | 8081 | MySQL `eastbill_identity` | users, login, captcha, JWT |
-| `bill-service` | 8083 | MySQL `eastbill_bill` | accounts, categories, bills |
+| `auth-service` | 8081 | PostgreSQL `eastbill_identity` | users, login, captcha, JWT |
+| `bill-service` | 8083 | PostgreSQL `eastbill_bill` | accounts, categories, bills |
 | `travel-service` | 8084 | PostgreSQL `travel_database` | flights, trains, footprints |
 | `diary-service` | 8085 | PostgreSQL `diary_database` | reserved diary boundary |
 
@@ -33,11 +33,11 @@ cd ..\diary-service
 .\init-database.ps1
 ```
 
-Each script resets and fully initializes only that service's database. Spring
-SQL initialization remains enabled for the MySQL services, so a normal startup
-also repairs missing tables without touching existing rows. The travel service
-likewise verifies its schema during startup. Mapserver databases and geographic
-source files are not touched.
+The auth initializer creates the PostgreSQL database if needed and idempotently
+creates its table; it preserves existing users. Bill initialization is also
+idempotent. Travel and diary scripts reset their databases. The auth, bill and
+travel services apply or verify their schemas during startup. Mapserver databases
+and geographic source files are not touched.
 
 ## Start in IDEA
 

@@ -17,7 +17,7 @@
             <!-- 头像区域 -->
             <div class="avatar-box">
               <el-avatar :size="80" :src="avatarUrl" />
-              <div class="username">Qi GuoHao</div>
+              <div class="username">{{ username }}</div>
             </div>
 
             <!-- 用户菜单 -->
@@ -104,6 +104,7 @@
 <script setup>
 import { ref } from 'vue'
 const avatarUrl = ref('https://cube.elemecdn.com/3/7c/3ea6beec64369c2642b92c6726f1epng.png')
+const username = ref(localStorage.getItem('username') || '个人用户')
 </script>
 
 <style scoped>

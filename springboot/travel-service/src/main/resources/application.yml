@@ -1,5 +1,7 @@
 server:
   port: ${TRAVEL_PORT:8084}
+jwt:
+  secret: ${JWT_SECRET:eastbill-local-dev-secret-change-before-deploy}
 spring:
   application:
     name: travel-service
